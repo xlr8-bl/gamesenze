@@ -1,0 +1,35 @@
+name: Weekly scrape
+
+# §3.5: 25 minutes weekly, 100/month.
+# REQ-SCRAPE-4: off-peak, 03:00-06:00 UTC. Actions will drift; the job logs a
+# warning if it lands outside the window rather than pretending it did not.
+on:
+  schedule:
+    - cron: "15 3 * * 2"
+  workflow_dispatch:
+
+concurrency:
+  # Two concurrent scrapes would double our request rate at the source and
+  # breach REQ-SCRAPE-1 without either run being aware of the other.
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Understat and FBref
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SCRAPER_CONTACT: ${{ secrets.SCRAPER_CONTACT }}
+        run: python -m pitchside.jobs.weekly_scrape
+
+      - name: Player variance refresh
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SCRAPER_CONTACT: ${{ secrets.SCRAPER_CONTACT }}
+        run: python -m pitchside.jobs.player_variance

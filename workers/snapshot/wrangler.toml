@@ -1,0 +1,24 @@
+name = "pitchside-snapshot"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+# §2.1: the minimum GitHub Actions interval is 5 minutes and it does not keep
+# to it. Workers cron does, and goes per-minute — which is what the T-1h/15-min
+# window in §3.4 actually needs.
+#
+# Every minute. The tick is a no-op unless due_odds_snapshots() returns rows,
+# so the cost is ~1,440 Worker requests/day against a 100,000/day ceiling, and
+# the vendor budget is protected by MAX_FIXTURES_PER_TICK plus the §8 ladder
+# inside the database function.
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+# Secrets are set with `wrangler secret put`, never here:
+#   SUPABASE_SERVICE_ROLE_KEY, SPORTSGAMEODDS_KEY, API_FOOTBALL_KEY,
+#   GH_DISPATCH_TOKEN
+SUPABASE_URL = ""
+GH_REPO = "xlr8-bl/gamesenze"
+
+[observability]
+enabled = true

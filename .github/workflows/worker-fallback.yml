@@ -1,0 +1,46 @@
+name: Worker fallback
+
+# §8: "Cloudflare Worker fails -> GitHub Actions fallback catches it within an
+# hour." The Worker fires this itself via workflow_dispatch when a tick errors,
+# and the hourly schedule is the backstop for the case where the Worker is not
+# running at all and therefore cannot report anything.
+#
+# Actions timing is unreliable (§2.1), so this catches up on missed captures
+# rather than pretending to be on time. Anything whose window has already
+# closed is recorded as missed, not backfilled with a late price pretending to
+# be an on-time one.
+on:
+  workflow_dispatch:
+    inputs:
+      cron:
+        description: "Which Worker tick failed"
+        required: false
+      errors:
+        description: "Error detail from the Worker"
+        required: false
+  schedule:
+    - cron: "20 * * * *"
+
+concurrency:
+  group: worker-fallback
+  cancel-in-progress: true
+
+jobs:
+  catch-up:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Report what the Worker said
+        if: inputs.errors != ''
+        run: echo "Worker tick '${{ inputs.cron }}' failed: ${{ inputs.errors }}"
+
+      - name: Catch up missed captures
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SPORTSGAMEODDS_KEY: ${{ secrets.SPORTSGAMEODDS_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: python -m pitchside.jobs.worker_fallback

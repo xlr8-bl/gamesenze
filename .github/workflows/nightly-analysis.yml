@@ -1,0 +1,30 @@
+name: Nightly analysis
+
+# §3.5: 4 minutes daily, 120/month.
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  analyse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Sync fixtures, compute features, draft picks
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          SPORTSGAMEODDS_KEY: ${{ secrets.SPORTSGAMEODDS_KEY }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: python -m pitchside.jobs.nightly_analysis
+
+      # Drafts only. REQ-QA-3 means nothing here can publish on its own: a
+      # person reads every pick before it goes out, and the gate enforces it.
+      - name: Report drafts awaiting review
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m pitchside.jobs.review_queue

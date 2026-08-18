@@ -1,0 +1,34 @@
+name: Daily QA audit
+
+# §3.5: 3 minutes daily, 90/month.
+#
+# §2.1: scheduled workflows only trigger on the default branch, and they run
+# late — 10-30 minutes is normal. That is fine here. Nothing in this job is
+# time-critical; it reviews yesterday.
+on:
+  schedule:
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+    inputs:
+      audit_date:
+        description: "Date to audit (YYYY-MM-DD). Defaults to yesterday."
+        required: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Run audit
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: python -m pitchside.jobs.daily_audit ${{ inputs.audit_date }}
+
+      - name: Prune provenance past retention
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m pitchside.jobs.prune

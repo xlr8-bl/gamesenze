@@ -1,0 +1,30 @@
+name: Weekly backtest integrity check
+
+# §3.5: 12 minutes weekly, 48/month.
+#
+# This job exists to fail. It re-runs the backtest and asserts the integrity
+# properties from §5.7 — point-in-time features, closing-line evaluation, the
+# 100-pick evidence threshold, calibration tracked alongside win rate. A green
+# run is not a good result on its own; a green run with `as_of_correct: false`
+# would be a broken one.
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Run backtest
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: python -m pitchside.jobs.weekly_backtest
+
+      - name: Assert no full-season lookups in feature code
+        run: python -m pitchside.jobs.lookahead_lint

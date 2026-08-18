@@ -1,0 +1,6 @@
+# Pinned entry point for environments that cannot install the package itself.
+# Prefer `pip install -e ".[scrape]"`.
+asyncpg>=0.29
+httpx>=0.27
+soccerdata>=1.8
+nba_api>=1.4

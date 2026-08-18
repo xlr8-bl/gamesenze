@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# The QA layer is the product's safety net; a red test suite means the net has
+# a hole in it, so this runs on every branch rather than only on main.
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+        ports: ["5432:5432"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Apply migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -c "create database pitchside;"
+          psql -h localhost -U postgres -d pitchside \
+            -c "create schema if not exists auth;
+                create or replace function auth.uid() returns uuid
+                language sql stable as \$\$ select null::uuid \$\$;"
+          for f in db/migrations/0*.sql; do
+            psql -h localhost -U postgres -d pitchside -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+
+      - name: Tests
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pitchside
+        run: pytest -q
+
+      - name: Lint
+        run: ruff check pitchside tests

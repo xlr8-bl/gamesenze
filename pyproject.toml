@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pitchside"
+version = "0.1.0"
+description = "Zero-cost sports analysis pipeline with fail-closed data supervision"
+requires-python = ">=3.11"
+dependencies = [
+    "asyncpg>=0.29",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+# Scraping pulls pandas via soccerdata, so it is kept out of the default
+# install: the Worker fallback and audit jobs do not need it, and a smaller
+# install is a faster Actions run against the 2,000-minute ceiling.
+scrape = [
+    "soccerdata>=1.8",
+    "nba_api>=1.4",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.6",
+]
+
+[tool.setuptools.packages.find]
+include = ["pitchside*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4"]
+ignore = [
+    # Long lines inside SQL strings and PRD citations; the code itself is short.
+    "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]

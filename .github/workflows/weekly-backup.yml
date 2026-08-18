@@ -1,0 +1,60 @@
+name: Weekly backup
+
+# §9.2: Supabase free has no automated backups. A weekly pg_dump to Supabase
+# Storage is our only recovery path — and an untested backup is a guess, so
+# this workflow restores the dump into a throwaway Postgres and checks the row
+# counts before it calls the backup good.
+#
+# Not in the §3.5 minute table. It adds roughly 40 min/month, taking the total
+# to ~488 of 2,000 — comfortably inside the band, and §10 requires the tested
+# restore regardless.
+on:
+  schedule:
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+        ports: ["5432:5432"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          mkdir -p backup
+          pg_dump --no-owner --no-acl -Fc "$DATABASE_URL" \
+            -f "backup/pitchside-$(date -u +%Y%m%d).dump"
+          ls -lh backup/
+
+      - name: Restore into a throwaway database and verify
+        env:
+          PGPASSWORD: postgres
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          psql -h localhost -U postgres -c "create database restore_test;"
+          pg_restore --no-owner --no-acl -h localhost -U postgres \
+            -d restore_test "backup/"*.dump
+          python -m pitchside.jobs.verify_restore \
+            --source "$DATABASE_URL" \
+            --restored postgresql://postgres:postgres@localhost:5432/restore_test
+
+      - name: Upload to Supabase Storage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m pitchside.jobs.upload_backup backup/
