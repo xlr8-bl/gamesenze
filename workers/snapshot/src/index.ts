@@ -86,7 +86,13 @@ async function tick(env: Env, cron: string) {
   }
 
   if (summary.errors.length > 0) {
-    // Never swallow. §8: failure must never be silent.
+    // Never swallow (§8) — but never stampede either. This cron fires every
+    // minute, and a persistent error is one failure per minute. Dispatching
+    // each one would spend 1,440 Actions minutes a day against a 2,000/month
+    // ceiling, so the §8 fallback would become the outage. The database hands
+    // out at most one dispatch per hour; worker-fallback.yml also runs hourly
+    // on its own schedule, so losing a dispatch delays recovery rather than
+    // preventing it.
     await dispatchFallback(env, "worker-fallback.yml", {
       cron,
       errors: summary.errors.join("; ").slice(0, 400),
@@ -215,6 +221,21 @@ async function dispatchFallback(
   inputs: Record<string, string>,
 ) {
   if (!env.GH_DISPATCH_TOKEN || !env.GH_REPO) return;
+
+  // Claim a slot, or stay quiet. If the claim itself fails we do NOT dispatch:
+  // an unreachable database is exactly the condition under which every tick
+  // errors, which is exactly when an unthrottled dispatch does the damage.
+  let claimed = false;
+  try {
+    claimed = await rpc<boolean>(env, "claim_fallback_dispatch", {
+      p_workflow: workflow,
+      p_reason: inputs.errors ?? null,
+    });
+  } catch {
+    return;
+  }
+  if (!claimed) return;
+
   await fetch(
     `https://api.github.com/repos/${env.GH_REPO}/actions/workflows/${workflow}/dispatches`,
     {

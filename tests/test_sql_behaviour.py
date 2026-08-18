@@ -279,3 +279,65 @@ async def test_a_qa_flag_cannot_be_raised_twice_while_it_is_open(pg):
     assert await pg.fetchval(
         "select count(*) from qa_flags where entity_id = $1", fixture_id
     ) == 1
+
+
+async def test_the_fallback_dispatch_is_throttled_to_one_an_hour(pg):
+    """The Worker's cron fires every minute and a persistent error fails every
+    minute. Dispatching each one would spend 1,440 Actions minutes a day
+    against a 2,000/month ceiling — the §8 fallback becoming the outage.
+    """
+    granted = [
+        await pg.fetchval(
+            "select claim_fallback_dispatch($1, 'odds: 401')", "throttle-test"
+        )
+        for _ in range(60)  # one simulated hour of failing ticks
+    ]
+
+    assert granted[0] is True
+    assert not any(granted[1:])
+    assert sum(granted) == 1
+
+
+async def test_a_new_hour_grants_a_fresh_dispatch(pg):
+    workflow = "hour-test"
+    assert await pg.fetchval(
+        "select claim_fallback_dispatch($1, 'boom')", workflow
+    ) is True
+
+    await pg.execute(
+        "update worker_dispatch_log set last_dispatched = now() - interval "
+        "'61 minutes' where workflow = $1",
+        workflow,
+    )
+    assert await pg.fetchval(
+        "select claim_fallback_dispatch($1, 'boom')", workflow
+    ) is True
+
+    row = await pg.fetchrow(
+        "select dispatch_count, last_reason from worker_dispatch_log "
+        "where workflow = $1",
+        workflow,
+    )
+    assert row["dispatch_count"] == 2
+    assert row["last_reason"] == "boom"
+
+
+async def test_different_workflows_are_throttled_independently(pg):
+    assert await pg.fetchval("select claim_fallback_dispatch('indep-a', null)") is True
+    assert await pg.fetchval("select claim_fallback_dispatch('indep-b', null)") is True
+
+
+async def test_suppressed_dispatches_remain_visible(pg):
+    # A throttle that hides the problem would be worse than the stampede.
+    workflow = "visible-test"
+    for _ in range(6):
+        await pg.fetchval(
+            "select claim_fallback_dispatch($1, 'odds: 401')", workflow
+        )
+
+    row = await pg.fetchrow(
+        "select * from v_worker_dispatch_health where workflow = $1", workflow
+    )
+    assert row["dispatch_count"] == 1
+    assert row["last_reason"] == "odds: 401"
+    assert row["since_last"] is not None

@@ -197,10 +197,55 @@ access tokens** → **Fine-grained tokens** → **Generate new token**:
 
 ---
 
-## 8. Cloudflare — no value to copy
+## 8. Cloudflare — no value to copy, but it is where the PAT goes
 
 Sign up at **dash.cloudflare.com**. Authentication happens through
-`npx wrangler login` in your browser, so there is no API token to store.
+`npx wrangler login` in your browser, so there is no Cloudflare token to store.
+
+Cloudflare is the *destination* for four secrets, including the GitHub PAT from
+step 7. The Worker needs that PAT because it calls the GitHub API itself when a
+tick fails — GitHub Actions secrets are not visible to a Cloudflare Worker, so
+it cannot live there.
+
+```bash
+cd workers/snapshot
+npm install
+npx wrangler login                                  # opens a browser
+
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+npx wrangler secret put SPORTSGAMEODDS_KEY
+npx wrangler secret put API_FOOTBALL_KEY
+npx wrangler secret put GH_DISPATCH_TOKEN           # the PAT from step 7
+```
+
+Each prompts for the value and stores it encrypted with Cloudflare. They are
+never in the repository and `wrangler secret list` shows only the names.
+
+Then set the one non-secret in `workers/snapshot/wrangler.toml`:
+
+```toml
+[vars]
+SUPABASE_URL = "https://<your-ref>.supabase.co"
+GH_REPO = "xlr8-bl/gamesenze"
+```
+
+`SUPABASE_URL` belongs in `[vars]` rather than a secret because it is already
+public in the frontend bundle. Never put a real secret there — `wrangler.toml`
+is committed.
+
+### Do not deploy until every key is set
+
+`npx wrangler deploy` registers the cron immediately, and the Worker then runs
+**every minute**. With a vendor key missing, every tick fails.
+
+Set the secrets now and deploy last. The Worker is the final step of the whole
+setup, after the database is migrated and seeded.
+
+You can confirm what is stored without deploying:
+
+```bash
+npx wrangler secret list
+```
 
 ---
 
