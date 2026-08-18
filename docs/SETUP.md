@@ -293,6 +293,14 @@ Fill in `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
 `API_FOOTBALL_KEY`, `SPORTSGAMEODDS_KEY`, `SCRAPER_CONTACT`. `.env` is
 gitignored; keep it that way.
 
+Every job entry point loads it automatically (`gamesenze/config.py`), so
+`DATABASE_URL` in `.env` is picked up the moment you run `python -m
+gamesenze.jobs.migrate` — no `export`/`$env:` needed. Real environment
+variables always take priority over `.env`, which is what keeps a
+GitHub Actions run safe: the secrets injected via `env:` in a workflow can
+never be shadowed by a `.env` file that happens to be sitting in the
+checked-out repo.
+
 ---
 
 ## Verify before proceeding

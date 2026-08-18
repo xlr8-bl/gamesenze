@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 # --- §1 operating principle -------------------------------------------------
 # Run at 70-85% of every free-tier ceiling. The margin absorbs a re-run after a
@@ -96,6 +97,26 @@ SUPABASE_LIMIT_MB = 500
 SUPABASE_ALERT_MB = 400
 
 
+def _load_dotenv(path: Path | None = None) -> None:
+    """Load KEY=VALUE lines from a .env file into the process environment.
+
+    No dependency, no interpolation, no quoting rules beyond stripping simple
+    wrapping quotes — this only needs to satisfy `.env.example`'s format.
+    Real environment variables always win (`setdefault`, never overwrite), so
+    a stray `.env` left in a checked-out repo can never shadow the values
+    GitHub Actions injects via `env:` in a workflow.
+    """
+    path = path or Path.cwd() / ".env"
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str = ""
@@ -110,6 +131,8 @@ class Settings:
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
+        if env is None:
+            _load_dotenv()
         e = os.environ if env is None else env
         return cls(
             database_url=e.get("DATABASE_URL", ""),
