@@ -7,7 +7,7 @@ import logging
 from ..scrape.soccerdata_jobs import SoccerDataScraper
 from ._runtime import JobContext, run_job
 
-log = logging.getLogger("pitchside.scrape")
+log = logging.getLogger("gamesenze.scrape")
 
 LEAGUES = ["ENG-Premier League", "ESP-La Liga", "ITA-Serie A"]
 SEASONS = ["2526"]

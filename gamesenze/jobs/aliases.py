@@ -38,7 +38,7 @@ async def main(ctx: JobContext) -> int:
                   f"({row['sightings']} sighting(s))")
             for s in suggest_aliases(row["source_name"], teams):
                 print(f"      {s.similarity:.2f}  {s.canonical_name}  ({s.canonical_team_id})")
-            print(f"      python -m pitchside.jobs.aliases add "
+            print(f"      python -m gamesenze.jobs.aliases add "
                   f"{row['source']} {row['source_name']!r} <team-id>\n")
         return 1  # non-zero: a backlog is unfinished work, not a clean state
 

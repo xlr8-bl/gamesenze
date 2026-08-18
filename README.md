@@ -1,4 +1,4 @@
-# Pitch Side
+# GameSenze
 
 Curated football and NBA analysis, running on $0.00/month of infrastructure.
 
@@ -15,12 +15,12 @@ closed, and a day with no picks is a normal day.
 |---|---|
 | `db/migrations/` | Schema, ingest triggers, and the cadence/ladder functions the Worker calls |
 | `db/seed/` | Canonical teams and their known spellings for three leagues |
-| `pitchside/qa/` | Data quality layers 1-6 |
-| `pitchside/backtest/` | Layer 7: point-in-time features, closing-line evaluation, calibration |
-| `pitchside/analysis/` | The model and stakes tags |
-| `pitchside/providers/` | Vendor clients, all budget-metered |
-| `pitchside/scrape/` | Self-collected data, throttled and archived raw |
-| `pitchside/jobs/` | GitHub Actions entry points |
+| `gamesenze/qa/` | Data quality layers 1-6 |
+| `gamesenze/backtest/` | Layer 7: point-in-time features, closing-line evaluation, calibration |
+| `gamesenze/analysis/` | The model and stakes tags |
+| `gamesenze/providers/` | Vendor clients, all budget-metered |
+| `gamesenze/scrape/` | Self-collected data, throttled and archived raw |
+| `gamesenze/jobs/` | GitHub Actions entry points |
 | `workers/snapshot/` | The Cloudflare Worker: everything time-critical |
 | `web/` | Static Next.js board and combo builder |
 | `tests/` | 176 tests, including SQL/Python parity |
@@ -63,7 +63,7 @@ after a failed job or a source that needs a second call; a pipeline tuned to
 | Cloudflare Workers | 100k req/day | ~1,440/day |
 | Supabase | 500MB | ~380MB |
 
-Every vendor call reserves budget *before* the request (`pitchside/budget.py`).
+Every vendor call reserves budget *before* the request (`gamesenze/budget.py`).
 Counting afterwards means a crash between request and write leaves us believing
 we have room we do not.
 
@@ -85,22 +85,22 @@ budget and would destroy the only honest measure of whether we found an edge.
 pip install -e ".[dev,scrape]"
 cp .env.example .env            # fill in DATABASE_URL and keys
 
-python -m pitchside.jobs.migrate
-python -m pitchside.jobs.seed   # teams and aliases BEFORE any ingestion
+python -m gamesenze.jobs.migrate
+python -m gamesenze.jobs.seed   # teams and aliases BEFORE any ingestion
 ```
 
 Run the tests. The SQL-level ones need a Postgres; without `TEST_DATABASE_URL`
 they skip rather than fail.
 
 ```bash
-createdb pitchside
-psql -d pitchside -c "create schema auth;
+createdb gamesenze
+psql -d gamesenze -c "create schema auth;
   create function auth.uid() returns uuid language sql stable as \$\$
     select null::uuid \$\$;"
-for f in db/migrations/0*.sql; do psql -d pitchside -f "$f"; done
+for f in db/migrations/0*.sql; do psql -d gamesenze -f "$f"; done
 
-TEST_DATABASE_URL=postgresql://localhost/pitchside pytest -q
-ruff check pitchside tests
+TEST_DATABASE_URL=postgresql://localhost/gamesenze pytest -q
+ruff check gamesenze tests
 ```
 
 Deploying the Worker and the site:
@@ -122,17 +122,17 @@ not error, they join the wrong rows. Every ingested record resolves through
 looks. Work the backlog with:
 
 ```bash
-python -m pitchside.jobs.aliases backlog
-python -m pitchside.jobs.aliases add fbref "Nott'ham Forest" <team-id>
+python -m gamesenze.jobs.aliases backlog
+python -m gamesenze.jobs.aliases add fbref "Nott'ham Forest" <team-id>
 ```
 
 **Every pick is read by a person.** `human_reviewed` is a gate check, not a
-convention. The nightly job drafts; `python -m pitchside.jobs.review_queue`
+convention. The nightly job drafts; `python -m gamesenze.jobs.review_queue`
 shows what is waiting. At 4-6 picks a day this is 20-30 minutes, and it is the
 binding constraint on volume — not compute.
 
 **Backtests are guilty until proven innocent.** `get_features_as_of()` is the
-only way to read match history, `pitchside/jobs/lookahead_lint.py` fails the
+only way to read match history, `gamesenze/jobs/lookahead_lint.py` fails the
 build on a full-season lookup or a wall-clock call in feature code, and results
 below 100 picks report themselves as not evidence. Selection uses the price we
 could have seen; evaluation uses the close.

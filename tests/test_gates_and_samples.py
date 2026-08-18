@@ -6,13 +6,13 @@ import dataclasses
 
 import pytest
 
-from pitchside.qa.gate import (
+from gamesenze.qa.gate import (
     MIN_FACTORS,
     PublicationContext,
     PublicationGate,
     failed_checks,
 )
-from pitchside.qa.samples import Disposition, evaluate_factor, evaluate_factors
+from gamesenze.qa.samples import Disposition, evaluate_factor, evaluate_factors
 from tests.conftest import FakeDb
 
 

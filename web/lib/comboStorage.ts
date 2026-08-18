@@ -10,7 +10,7 @@ import type { Pick } from "./supabase";
  * save it. Until then there is nothing to store: we are not building a profile
  * of what someone browsed, and §12 gives us no reason to.
  */
-const KEY = "pitchside.combo";
+const KEY = "gamesenze.combo";
 
 export function readCombo(): Leg[] {
   if (typeof window === "undefined") return [];

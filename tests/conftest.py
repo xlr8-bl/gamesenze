@@ -16,7 +16,7 @@ from typing import Any
 
 import pytest
 
-from pitchside.clock import FrozenClock
+from gamesenze.clock import FrozenClock
 
 NOW = datetime(2026, 8, 18, 12, 0, tzinfo=UTC)
 

@@ -26,10 +26,10 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SCRAPER_CONTACT: ${{ secrets.SCRAPER_CONTACT }}
-        run: python -m pitchside.jobs.weekly_scrape
+        run: python -m gamesenze.jobs.weekly_scrape
 
       - name: Player variance refresh
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SCRAPER_CONTACT: ${{ secrets.SCRAPER_CONTACT }}
-        run: python -m pitchside.jobs.player_variance
+        run: python -m gamesenze.jobs.player_variance

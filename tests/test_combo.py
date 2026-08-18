@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from pitchside.combo import (
+from gamesenze.combo import (
     DISCLAIMER,
     ComboError,
     ComboLeg,

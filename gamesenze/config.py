@@ -112,4 +112,4 @@ def user_agent(contact: str) -> str:
             "SCRAPER_CONTACT is required: REQ-SCRAPE-2 forbids an anonymous "
             "scraper"
         )
-    return f"PitchSide/{__import__('pitchside').__version__} (+{contact})"
+    return f"GameSenze/{__import__('gamesenze').__version__} (+{contact})"

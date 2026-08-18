@@ -6,7 +6,7 @@
 |---|---|---|
 | Continuous | Odds snapshots, T-1h lineups | Cloudflare Worker (per-minute cron) |
 | 04:00 UTC | Nightly analysis drafts picks | `nightly-analysis.yml` |
-| Morning | **A person reads every draft** | `python -m pitchside.jobs.review_queue` |
+| Morning | **A person reads every draft** | `python -m gamesenze.jobs.review_queue` |
 | 07:30 UTC | Yesterday's audit | `daily-qa-audit.yml` |
 | Hourly :20 | Worker fallback catch-up | `worker-fallback.yml` |
 
@@ -50,7 +50,7 @@ A source sent a spelling we do not know. The fixture is blocked from
 publication and the name is in the backlog:
 
 ```bash
-python -m pitchside.jobs.aliases backlog
+python -m gamesenze.jobs.aliases backlog
 ```
 
 The suggestions are ranked by string similarity and are **only** suggestions. A
@@ -91,7 +91,7 @@ This is what REQ-SCRAPE-5 buys. Without the raw archive that history is gone.
 ### Supabase near 500MB
 
 `daily-qa-audit.yml` runs the prune and alerts at 400MB. If it is still
-climbing, shorten `PROVENANCE_RETENTION_DAYS` in `pitchside/config.py` — raw
+climbing, shorten `PROVENANCE_RETENTION_DAYS` in `gamesenze/config.py` — raw
 responses are almost always the cause.
 
 ## Drills
@@ -116,7 +116,7 @@ manual endpoint while several fixtures are due and check the reported CPU time
 in `wrangler tail`:
 
 ```bash
-curl https://pitchside-snapshot.<subdomain>.workers.dev/run
+curl https://gamesenze-snapshot.<subdomain>.workers.dev/run
 npx wrangler tail --format pretty
 ```
 
@@ -129,7 +129,7 @@ once so you have watched it work:
 ```bash
 pg_dump --no-owner --no-acl -Fc "$DATABASE_URL" -f backup.dump
 createdb restore_test && pg_restore --no-owner --no-acl -d restore_test backup.dump
-python -m pitchside.jobs.verify_restore \
+python -m gamesenze.jobs.verify_restore \
   --source "$DATABASE_URL" --restored postgresql://localhost/restore_test
 ```
 

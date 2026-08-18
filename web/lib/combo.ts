@@ -1,5 +1,5 @@
 /**
- * Combo maths — §12. Mirrors pitchside/combo.py; tests/test_combo.py is the
+ * Combo maths — §12. Mirrors gamesenze/combo.py; tests/test_combo.py is the
  * reference for the numbers.
  *
  * The independence caveat is the important part. Multiplying leg probabilities

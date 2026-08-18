@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from pitchside.budget import BudgetExhausted, BudgetMeter, BudgetStatus, period_key
-from pitchside.config import PROVIDER_BUDGETS
-from pitchside.degrade import Rung, policy_from_statuses, rung_for, worst_rung
+from gamesenze.budget import BudgetExhausted, BudgetMeter, BudgetStatus, period_key
+from gamesenze.config import PROVIDER_BUDGETS
+from gamesenze.degrade import Rung, policy_from_statuses, rung_for, worst_rung
 from tests.conftest import NOW, FakeDb
 
 

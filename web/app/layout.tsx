@@ -2,7 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Pitch Side",
+  title: "GameSenze",
   description:
     "Curated football and NBA analysis. We show the maths; you place the bets.",
 };
@@ -17,7 +17,7 @@ export default function RootLayout({
       <body>
         <div className="wrap">
           <header className="site">
-            <h1>Pitch Side</h1>
+            <h1>GameSenze</h1>
             <nav>
               <a href="/board/">Board</a>
               <a href="/combo-builder/">Combo builder</a>

@@ -7,7 +7,7 @@ lineups, live in-play, 140+ book coverage) is a later upgrade, not a launch
 requirement.
 
 Everything in this package takes `as_of` and never reads a clock. The lookahead
-lint (pitchside/jobs/lookahead_lint.py) enforces it.
+lint (gamesenze/jobs/lookahead_lint.py) enforces it.
 """
 
 from .model import MatchModel, MatchPrices

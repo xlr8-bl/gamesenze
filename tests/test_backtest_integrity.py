@@ -6,19 +6,19 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from pitchside.backtest.calibration import (
+from gamesenze.backtest.calibration import (
     brier_score,
     calibration_bins,
     calibration_error,
     wilson_interval,
 )
-from pitchside.backtest.features import (
+from gamesenze.backtest.features import (
     MIN_MATCHES,
     LookaheadError,
     compute_features,
     get_features_as_of,
 )
-from pitchside.backtest.harness import (
+from gamesenze.backtest.harness import (
     MIN_PICKS_FOR_EVIDENCE,
     BacktestCandidate,
     BacktestHarness,

@@ -30,19 +30,19 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: |
-          psql -h localhost -U postgres -c "create database pitchside;"
-          psql -h localhost -U postgres -d pitchside \
+          psql -h localhost -U postgres -c "create database gamesenze;"
+          psql -h localhost -U postgres -d gamesenze \
             -c "create schema if not exists auth;
                 create or replace function auth.uid() returns uuid
                 language sql stable as \$\$ select null::uuid \$\$;"
           for f in db/migrations/0*.sql; do
-            psql -h localhost -U postgres -d pitchside -v ON_ERROR_STOP=1 -q -f "$f"
+            psql -h localhost -U postgres -d gamesenze -v ON_ERROR_STOP=1 -q -f "$f"
           done
 
       - name: Tests
         env:
-          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pitchside
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gamesenze
         run: pytest -q
 
       - name: Lint
-        run: ruff check pitchside tests
+        run: ruff check gamesenze tests

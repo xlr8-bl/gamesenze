@@ -1,5 +1,5 @@
 {
-  "_note": "Canonical teams plus the spellings we expect to meet in the wild. Seeded for every source; whatever a source actually sends that is missing here lands in unresolved_team_names and is confirmed by a human via `python -m pitchside.jobs.aliases backlog`. The seed is a head start, not a claim to be exhaustive.",
+  "_note": "Canonical teams plus the spellings we expect to meet in the wild. Seeded for every source; whatever a source actually sends that is missing here lands in unresolved_team_names and is confirmed by a human via `python -m gamesenze.jobs.aliases backlog`. The seed is a head start, not a claim to be exhaustive.",
   "competitions": [
     {"sport": "football", "name": "Premier League", "country": "England", "tier": 1},
     {"sport": "football", "name": "La Liga", "country": "Spain", "tier": 1},

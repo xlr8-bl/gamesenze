@@ -6,8 +6,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from pitchside.qa.errors import QAViolation
-from pitchside.qa.validation import (
+from gamesenze.qa.errors import QAViolation
+from gamesenze.qa.validation import (
     RULES,
     validate_batch,
     validate_or_reject,

@@ -18,7 +18,7 @@ from ..degrade import policy_from_statuses
 from ..providers.sgo import SportsGameOdds
 from ._runtime import JobContext, run_job
 
-log = logging.getLogger("pitchside.fallback")
+log = logging.getLogger("gamesenze.fallback")
 
 MAX_CATCHUP = 10
 

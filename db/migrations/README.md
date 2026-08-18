@@ -5,8 +5,8 @@ Applied in filename order. They are idempotent (`create ... if not exists`,
 database is safe.
 
 ```bash
-python -m pitchside.jobs.migrate            # applies anything unapplied
-python -m pitchside.jobs.migrate --dry-run  # shows what would run
+python -m gamesenze.jobs.migrate            # applies anything unapplied
+python -m gamesenze.jobs.migrate --dry-run  # shows what would run
 ```
 
 Order matters for one reason beyond dependencies: `0002_qa.sql` deploys the

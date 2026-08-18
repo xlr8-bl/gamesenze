@@ -68,7 +68,7 @@ async def main(ctx: JobContext) -> int:
         "Anything a source sends that is not in here lands in "
         "unresolved_team_names and blocks its fixture until a human resolves "
         "it (REQ-DATA-NORM-1). Check the backlog with:\n"
-        "  python -m pitchside.jobs.aliases backlog"
+        "  python -m gamesenze.jobs.aliases backlog"
     )
     return 0
 

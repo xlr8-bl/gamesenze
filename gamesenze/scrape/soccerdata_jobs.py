@@ -20,7 +20,7 @@ from ..db import Db
 from .provenance import RawStore, scrape_run
 from .throttle import off_peak_now
 
-log = logging.getLogger("pitchside.scrape")
+log = logging.getLogger("gamesenze.scrape")
 
 
 @dataclass

@@ -55,7 +55,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname !== "/run") {
-      return new Response("pitch-side snapshot worker", { status: 200 });
+      return new Response("gamesenze snapshot worker", { status: 200 });
     }
     const started = Date.now();
     const result = await tick(env, "manual");
@@ -216,7 +216,7 @@ async function dispatchFallback(
         Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`,
         Accept: "application/vnd.github+json",
         "Content-Type": "application/json",
-        "User-Agent": "pitch-side-worker",
+        "User-Agent": "gamesenze-worker",
       },
       body: JSON.stringify({ ref: "main", inputs }),
     },

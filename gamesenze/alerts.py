@@ -13,7 +13,7 @@ import logging
 import urllib.request
 from typing import Any
 
-log = logging.getLogger("pitchside.alerts")
+log = logging.getLogger("gamesenze.alerts")
 
 
 class Alerter:

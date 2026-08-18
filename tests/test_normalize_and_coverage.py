@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import pytest
 
-from pitchside.budget import BudgetMeter
-from pitchside.coverage import CoverageController
-from pitchside.degrade import Rung, policy_for
-from pitchside.normalize import (
+from gamesenze.budget import BudgetMeter
+from gamesenze.coverage import CoverageController
+from gamesenze.degrade import Rung, policy_for
+from gamesenze.normalize import (
     TeamResolver,
     UnresolvedTeamName,
     normalise_name,
     suggest_aliases,
 )
-from pitchside.odds.schedule import monthly_object_cost
+from gamesenze.odds.schedule import monthly_object_cost
 from tests.conftest import FakeDb
 
 

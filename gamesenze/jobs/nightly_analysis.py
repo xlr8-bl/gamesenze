@@ -17,7 +17,7 @@ from ..odds.math import edge
 from ..qa.samples import evaluate_factors
 from ._runtime import JobContext, run_job
 
-log = logging.getLogger("pitchside.nightly")
+log = logging.getLogger("gamesenze.nightly")
 
 EDGE_THRESHOLD = 0.04  # 4% over the price before a pick is worth drafting
 

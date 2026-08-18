@@ -28,7 +28,7 @@ create index if not exists odds_ingest_queue_unprocessed_idx
 -- ---------------------------------------------------------------------------
 -- Flatten one queued payload into odds_snapshots.
 --
--- Mirrors pitchside.providers.sgo.parse_odds. The two must agree, and
+-- Mirrors gamesenze.providers.sgo.parse_odds. The two must agree, and
 -- tests/test_ingest_parity.py pins them to the same fixtures so a change to
 -- one that is not made to the other fails the build.
 -- ---------------------------------------------------------------------------
@@ -148,7 +148,7 @@ create trigger odds_ingest_queue_process
 
 -- ---------------------------------------------------------------------------
 -- The §3.4 cadence, in SQL. Defined before `due_odds_snapshots`, which calls
--- it. This must agree with pitchside/odds/schedule.py; tests/test_sql_parity.py
+-- it. This must agree with gamesenze/odds/schedule.py; tests/test_sql_parity.py
 -- pins both to the same expected capture times.
 -- ---------------------------------------------------------------------------
 create or replace function snapshot_plan(

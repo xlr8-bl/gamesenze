@@ -24,7 +24,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
-        run: python -m pitchside.jobs.weekly_backtest
+        run: python -m gamesenze.jobs.weekly_backtest
 
       - name: Assert no full-season lookups in feature code
-        run: python -m pitchside.jobs.lookahead_lint
+        run: python -m gamesenze.jobs.lookahead_lint

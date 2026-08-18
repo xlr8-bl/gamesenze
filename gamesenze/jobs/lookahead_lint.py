@@ -26,7 +26,7 @@ from pathlib import Path
 
 # Where features are computed. Ingestion and jobs legitimately read whole
 # seasons; feature code never may.
-FEATURE_PATHS = ("pitchside/backtest", "pitchside/analysis")
+FEATURE_PATHS = ("gamesenze/backtest", "gamesenze/analysis")
 
 HISTORY_TABLES = ("team_match_stats", "player_match_stats", "matches", "fixtures")
 # Prose mentioning "selection" and "fixtures" is not a query. Requiring an

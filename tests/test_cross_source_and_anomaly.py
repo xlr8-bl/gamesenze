@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from pitchside.qa.anomaly import (
+from gamesenze.qa.anomaly import (
     FixtureKey,
     check_coverage_gap,
     check_impossible_line,
@@ -15,7 +15,7 @@ from pitchside.qa.anomaly import (
     check_xg_outlier,
     find_duplicate_fixtures,
 )
-from pitchside.qa.cross_source import (
+from gamesenze.qa.cross_source import (
     CrossVerifier,
     VerificationReport,
     compare_kickoff,
@@ -24,7 +24,7 @@ from pitchside.qa.cross_source import (
     compare_starting_xi,
     compare_team_xg,
 )
-from pitchside.qa.errors import Severity
+from gamesenze.qa.errors import Severity
 from tests.conftest import FakeDb
 
 KICKOFF = datetime(2026, 8, 20, 19, 0, tzinfo=UTC)

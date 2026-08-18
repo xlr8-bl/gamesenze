@@ -43,4 +43,4 @@ jobs:
           SPORTSGAMEODDS_KEY: ${{ secrets.SPORTSGAMEODDS_KEY }}
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
-        run: python -m pitchside.jobs.worker_fallback
+        run: python -m gamesenze.jobs.worker_fallback

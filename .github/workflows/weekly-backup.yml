@@ -38,7 +38,7 @@ jobs:
         run: |
           mkdir -p backup
           pg_dump --no-owner --no-acl -Fc "$DATABASE_URL" \
-            -f "backup/pitchside-$(date -u +%Y%m%d).dump"
+            -f "backup/gamesenze-$(date -u +%Y%m%d).dump"
           ls -lh backup/
 
       - name: Restore into a throwaway database and verify
@@ -49,7 +49,7 @@ jobs:
           psql -h localhost -U postgres -c "create database restore_test;"
           pg_restore --no-owner --no-acl -h localhost -U postgres \
             -d restore_test "backup/"*.dump
-          python -m pitchside.jobs.verify_restore \
+          python -m gamesenze.jobs.verify_restore \
             --source "$DATABASE_URL" \
             --restored postgresql://postgres:postgres@localhost:5432/restore_test
 
@@ -57,4 +57,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: python -m pitchside.jobs.upload_backup backup/
+        run: python -m gamesenze.jobs.upload_backup backup/

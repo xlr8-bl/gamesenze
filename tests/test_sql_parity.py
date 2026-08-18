@@ -16,8 +16,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from pitchside.odds.schedule import PLANNED_SNAPSHOTS_PER_FIXTURE, plan_snapshots
-from pitchside.providers.sgo import parse_odds
+from gamesenze.odds.schedule import PLANNED_SNAPSHOTS_PER_FIXTURE, plan_snapshots
+from gamesenze.providers.sgo import parse_odds
 from tests.conftest import requires_pg
 
 pytestmark = requires_pg
