@@ -14,7 +14,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - name: Sync fixtures, compute features, draft picks
+      # The step this file's name has always implied but never ran: nothing
+      # else in the pipeline writes a fixture for the first time, everything
+      # downstream reads one that already exists.
+      - name: Sync fixtures from resolved competitions
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: python -m gamesenze.jobs.fixture_sync
+
+      - name: Compute features, draft picks
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}

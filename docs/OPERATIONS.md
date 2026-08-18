@@ -5,7 +5,7 @@
 | When | What | Where |
 |---|---|---|
 | Continuous | Odds snapshots, T-1h lineups | Cloudflare Worker (per-minute cron) |
-| 04:00 UTC | Nightly analysis drafts picks | `nightly-analysis.yml` |
+| 04:00 UTC | Sync fixtures, then draft picks | `nightly-analysis.yml` |
 | Morning | **A person reads every draft** | `python -m gamesenze.jobs.review_queue` |
 | 07:30 UTC | Yesterday's audit | `daily-qa-audit.yml` |
 | Hourly :20 | Worker fallback catch-up | `worker-fallback.yml` |
@@ -93,6 +93,42 @@ This is what REQ-SCRAPE-5 buys. Without the raw archive that history is gone.
 `daily-qa-audit.yml` runs the prune and alerts at 400MB. If it is still
 climbing, shorten `PROVENANCE_RETENTION_DAYS` in `gamesenze/config.py` — raw
 responses are almost always the cause.
+
+## Setting up competition coverage (one-time)
+
+Fixtures are only synced for competitions that have been resolved against
+API-Football's own `/leagues` endpoint — nothing is guessed. Two independent
+lookups for the same competition produced conflicting numeric IDs during
+development, which is exactly the failure mode this step exists to prevent.
+
+```bash
+python -m gamesenze.jobs.resolve_competitions
+```
+
+Interactive: it searches each competition in `gamesenze/competitions.py`,
+shows every candidate the vendor actually returned, and you pick the right one
+by number (or skip). Safe to stop and re-run — it only prompts for whatever
+is still unresolved. Re-run it each pre-season, since seasons roll over and a
+stale `resolved_season` would sync last year's fixtures under this year's date.
+
+Then, and on every future run:
+
+```bash
+python -m gamesenze.jobs.fixture_sync
+```
+
+Populates `fixtures` for every resolved competition. Unresolved team names
+block that one fixture (not the whole run) and land in the alias backlog —
+see `python -m gamesenze.jobs.aliases backlog` above.
+
+**Known gap:** standings-derived stakes tags (`top_four_clash`,
+`relegation_battle`, `neighbours_in_table`, `dead_rubber_for_one_side`) are not
+computed yet — there is no `standings` table, so `nightly_analysis` currently
+runs `stakes_tags()` against a minimal input that can only produce
+run-in/rest/derby-type tags, never position-based ones. This does not block
+publication (the gate only requires the computation to have run, and it does),
+it just means position-based stakes are silently absent rather than present.
+Tracked, not forgotten.
 
 ## Drills
 

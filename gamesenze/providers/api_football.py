@@ -40,6 +40,22 @@ class ApiFootball:
             clock=clock,
         )
 
+    # --- competition resolution: one-time, not part of any daily budget line -
+    async def search_leagues(self, name: str) -> Response:
+        """`/leagues?search=<name>`, for resolving a competition's numeric ID.
+
+        Deliberately outside the daily allocation: this runs once per
+        competition, ever, driven by a human confirming a match — not on a
+        schedule, so it does not compete with fixture_sync etc. for budget.
+        """
+        return await self._client.get(
+            "leagues",
+            params={"search": name},
+            job="resolve_competitions",
+            entity_type="competition_lookup",
+            entity_ref=name,
+        )
+
     # --- fixture_sync: 8 calls/day, one per league ------------------------
     async def fixtures(
         self, league_id: int, season: int, *, days: int = 7, today: date | None = None
