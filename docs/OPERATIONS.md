@@ -101,6 +101,8 @@ API-Football's own `/leagues` endpoint — nothing is guessed. Two independent
 lookups for the same competition produced conflicting numeric IDs during
 development, which is exactly the failure mode this step exists to prevent.
 
+**From a terminal:**
+
 ```bash
 python -m gamesenze.jobs.resolve_competitions
 ```
@@ -111,11 +113,37 @@ by number (or skip). Safe to stop and re-run — it only prompts for whatever
 is still unresolved. Re-run it each pre-season, since seasons roll over and a
 stale `resolved_season` would sync last year's fixtures under this year's date.
 
-Then, and on every future run:
+**From a phone, no terminal at all:** two GitHub Actions workflows do the same
+job in two steps, both triggered from the Actions tab's "Run workflow" button.
+Pick the feature branch in the branch dropdown if this has not been merged to
+`main` yet — `workflow_dispatch` runs whatever branch you select, but the file
+has to exist there.
+
+1. **"Resolve competitions — 1. show candidates"** — reads only, writes
+   nothing. Open the run once it finishes and read the log: every unresolved
+   competition's real API-Football candidates, e.g.
+
+   ```
+   key: premier_league
+     [1] id=39    'Premier League'      England   League  season 2025
+     [2] id=570   'Premier League Cup'  England   Cup     season 2025
+   ```
+
+2. **"Resolve competitions — 2. confirm picks"** — has one text box, `picks`.
+   Fill in the id you want per competition as `key=id`, comma-separated:
+   `premier_league=39,la_liga=140,serie_a=135,...`. It re-checks each id
+   against what the vendor actually returned before writing anything — a
+   typo'd number is rejected, not silently accepted.
+
+Then, from either path, and on every future run:
 
 ```bash
 python -m gamesenze.jobs.fixture_sync
 ```
+
+Or from a phone: the existing **"Nightly analysis"** workflow already runs
+this as its first step — "Run workflow" on that one covers fixture sync,
+drafting, and the review queue report in a single tap.
 
 Populates `fixtures` for every resolved competition. Unresolved team names
 block that one fixture (not the whole run) and land in the alias backlog —

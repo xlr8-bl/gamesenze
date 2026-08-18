@@ -16,10 +16,11 @@ new one.
 
 from __future__ import annotations
 
+import os
 import sys
 from typing import Any
 
-from ..competitions import COMPETITIONS, CompetitionSpec
+from ..competitions import COMPETITIONS, CompetitionSpec, by_key
 from ..providers.api_football import ApiFootball
 from ._runtime import JobContext, run_job
 
@@ -142,16 +143,108 @@ async def confirm(
     print(f"  confirmed: {spec.name} -> api_football id={choice['id']}")
 
 
+async def dump(ctx: JobContext, client: ApiFootball) -> int:
+    """Non-interactive: print every candidate, decide nothing.
+
+    For running from a phone via GitHub Actions' "Run workflow" button, where
+    there is no keyboard for prompt_choice() to read. The human reads the
+    printed candidates in the workflow log and comes back with their picks for
+    the `--confirm` mode below — the decision is still made by a person
+    reading real vendor data, just relayed through a log instead of a
+    terminal prompt.
+    """
+    print("Reading each competition's real candidates from API-Football.\n"
+          "Nothing is written by this run. Note the [id] you want for each "
+          "line below, then trigger 'Confirm competitions' with e.g.\n"
+          "  premier_league=39,la_liga=140,serie_a=135\n")
+    unresolved = [c for c in COMPETITIONS if not await already_resolved(ctx, c.key)]
+    if not unresolved:
+        print("nothing unresolved — every competition already has an ID")
+        return 0
+    for spec in unresolved:
+        response = await client.search_leagues(spec.name)
+        print(f"key: {spec.key}")
+        print_candidates(spec, candidates_from_response(response.body))
+    return 0
+
+
+def parse_picks(raw: str) -> dict[str, int]:
+    """'premier_league=39,la_liga=140' -> {'premier_league': 39, ...}
+
+    Rejects the whole batch on a malformed entry rather than silently
+    dropping it — a typo'd pair should stop the run, not vanish.
+    """
+    picks: dict[str, int] = {}
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if not pair:
+            continue
+        if "=" not in pair:
+            raise ValueError(f"{pair!r} is not key=id")
+        key, _, value = pair.partition("=")
+        picks[key.strip()] = int(value.strip())
+    return picks
+
+
+async def confirm_from_picks(
+    ctx: JobContext, client: ApiFootball, raw_picks: str, resolved_by: str
+) -> int:
+    """Phone-mode confirmation. Still verifies against the live vendor
+    response rather than trusting a bare number: the id must appear among
+    what /leagues actually returns for that competition's name, or it is
+    rejected rather than accepted on faith. A typo'd id is exactly the kind
+    of unverified match REQ-DATA-NORM-1 exists to catch.
+    """
+    picks = parse_picks(raw_picks)
+    confirmed = rejected = 0
+
+    for key, chosen_id in picks.items():
+        try:
+            spec = by_key(key)
+        except KeyError:
+            print(f"  {key}: not a known competition key, skipping")
+            rejected += 1
+            continue
+
+        response = await client.search_leagues(spec.name)
+        candidates = candidates_from_response(response.body)
+        match = next((c for c in candidates if c["id"] == chosen_id), None)
+        if match is None:
+            print(f"  {key}: id {chosen_id} was not in API-Football's own "
+                  f"results for {spec.name!r} — not confirming an unverified "
+                  "number, skipping")
+            rejected += 1
+            continue
+
+        await confirm(ctx, spec, match, resolved_by)
+        confirmed += 1
+
+    print(f"\n{confirmed} confirmed, {rejected} rejected")
+    return 0 if rejected == 0 else 1
+
+
 async def main(ctx: JobContext) -> int:
     if not ctx.settings.api_football_key:
-        print("API_FOOTBALL_KEY is not set (check your .env)", file=sys.stderr)
+        print("API_FOOTBALL_KEY is not set", file=sys.stderr)
         return 2
 
-    resolved_by = sys.argv[1] if len(sys.argv) > 1 else "terminal"
     client = ApiFootball(
         ctx.settings.api_football_key, db=ctx.db, meter=ctx.meter, clock=ctx.clock
     )
+    args = sys.argv[1:]
 
+    if args and args[0] == "--dump":
+        return await dump(ctx, client)
+
+    if args and args[0] == "--confirm":
+        if len(args) < 2:
+            print("usage: --confirm 'key=id,key=id,...'", file=sys.stderr)
+            return 2
+        resolved_by = os.environ.get("GITHUB_ACTOR", "phone-confirm")
+        return await confirm_from_picks(ctx, client, args[1], resolved_by)
+
+    # Interactive terminal mode, unchanged.
+    resolved_by = args[0] if args else "terminal"
     resolved = 0
     skipped = 0
     try:

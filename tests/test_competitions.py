@@ -178,3 +178,130 @@ async def test_an_existing_fixture_is_updated_not_duplicated():
     assert fixture_id == "existing-fixture-uuid"
     assert db.wrote("update fixtures")
     assert not db.wrote("insert into fixtures")
+
+
+# --- phone-safe modes -------------------------------------------------------
+
+def test_parse_picks_reads_key_equals_id_pairs():
+    from gamesenze.jobs.resolve_competitions import parse_picks
+
+    assert parse_picks("premier_league=39,la_liga=140") == {
+        "premier_league": 39,
+        "la_liga": 140,
+    }
+
+
+def test_parse_picks_tolerates_whitespace_and_trailing_comma():
+    from gamesenze.jobs.resolve_competitions import parse_picks
+
+    assert parse_picks(" premier_league = 39 , la_liga=140, ") == {
+        "premier_league": 39,
+        "la_liga": 140,
+    }
+
+
+def test_parse_picks_rejects_a_malformed_pair():
+    from gamesenze.jobs.resolve_competitions import parse_picks
+
+    with pytest.raises(ValueError, match="not key=id"):
+        parse_picks("premier_league=39,garbage")
+
+
+def test_parse_picks_rejects_a_non_numeric_id():
+    from gamesenze.jobs.resolve_competitions import parse_picks
+
+    with pytest.raises(ValueError):
+        parse_picks("premier_league=not-a-number")
+
+
+async def test_confirm_from_picks_rejects_an_id_the_vendor_never_returned():
+    # The whole point of --confirm: a typo'd id must not be accepted on
+    # faith just because it came through a form field instead of a prompt.
+    from gamesenze.jobs.resolve_competitions import confirm_from_picks
+
+    class FakeClient:
+        async def search_leagues(self, name):
+            class R:
+                body = {
+                    "response": [
+                        {
+                            "league": {"id": 39, "name": "Premier League", "type": "League"},
+                            "country": {"name": "England"},
+                            "seasons": [{"year": 2025, "current": True}],
+                        }
+                    ]
+                }
+
+            return R()
+
+    db = FakeDb()
+    ctx = type("Ctx", (), {"db": db, "clock": None})()
+    exit_code = await confirm_from_picks(
+        ctx, FakeClient(), "premier_league=9999", "test"
+    )
+
+    assert exit_code == 1
+    assert not db.wrote("insert into competition_source_ids")
+
+
+async def test_confirm_from_picks_writes_a_vendor_verified_id():
+    from gamesenze.jobs.resolve_competitions import confirm_from_picks
+
+    class FakeClient:
+        async def search_leagues(self, name):
+            class R:
+                body = {
+                    "response": [
+                        {
+                            "league": {"id": 39, "name": "Premier League", "type": "League"},
+                            "country": {"name": "England"},
+                            "seasons": [{"year": 2025, "current": True}],
+                        }
+                    ]
+                }
+
+            return R()
+
+    db = FakeDb({"returning id": "comp-uuid"})
+    ctx = type("Ctx", (), {"db": db, "clock": _clock()})()
+    exit_code = await confirm_from_picks(
+        ctx, FakeClient(), "premier_league=39", "phone-test"
+    )
+
+    assert exit_code == 0
+    assert db.wrote("insert into competition_source_ids")
+
+
+def _clock():
+    from gamesenze.clock import FrozenClock
+
+    return FrozenClock(NOW)
+
+
+async def test_confirm_from_picks_rejects_an_unknown_key():
+    from gamesenze.jobs.resolve_competitions import confirm_from_picks
+
+    db = FakeDb()
+    ctx = type("Ctx", (), {"db": db, "clock": _clock()})()
+    exit_code = await confirm_from_picks(
+        ctx, object(), "not_a_real_key=39", "test"
+    )
+    assert exit_code == 1
+    assert not db.wrote("insert into competition_source_ids")
+
+
+async def test_dump_writes_nothing():
+    from gamesenze.jobs.resolve_competitions import dump
+
+    class FakeClient:
+        async def search_leagues(self, name):
+            class R:
+                body = {"response": []}
+
+            return R()
+
+    db = FakeDb()
+    ctx = type("Ctx", (), {"db": db})()
+    await dump(ctx, FakeClient())
+
+    assert not db.wrote("insert into")

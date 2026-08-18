@@ -1,0 +1,29 @@
+name: Resolve competitions — 2. confirm picks
+
+# Second half of the phone-safe flow. Takes the picks a human made after
+# reading the "show candidates" run's log and writes them — but does not
+# trust the typed number blindly: it re-queries API-Football and only
+# confirms an id that the vendor's own response actually contains for that
+# competition's name. A typo'd id is rejected, not silently accepted.
+on:
+  workflow_dispatch:
+    inputs:
+      picks:
+        description: >-
+          Comma-separated key=id pairs from the "show candidates" run's log,
+          e.g. premier_league=39,la_liga=140,serie_a=135
+        required: true
+
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Verify and write the confirmed competition IDs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: python -m gamesenze.jobs.resolve_competitions --confirm "${{ inputs.picks }}"

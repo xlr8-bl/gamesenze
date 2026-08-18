@@ -1,0 +1,27 @@
+name: Resolve competitions — 1. show candidates
+
+# Phone-safe half of a two-step flow. Reads only — nothing is written here.
+# Triggered from GitHub's website (Actions tab -> this workflow -> "Run
+# workflow"), so it never needs a terminal. Searches API-Football's own
+# /leagues endpoint for every competition that has no confirmed ID yet and
+# prints what the vendor actually returned, so a human can pick from real
+# data in the run's log rather than a guessed number. See
+# gamesenze/jobs/resolve_competitions.py for why nothing here is hardcoded —
+# two independent lookups for the same competitions produced conflicting IDs
+# during development.
+on:
+  workflow_dispatch:
+
+jobs:
+  dump-candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Show every unresolved competition's real candidates
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: python -m gamesenze.jobs.resolve_competitions --dump
