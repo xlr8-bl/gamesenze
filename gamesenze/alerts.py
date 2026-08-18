@@ -22,8 +22,21 @@ class Alerter:
         self._timeout = timeout
         self.sent: list[dict[str, Any]] = []
 
+    def _payload(self, message: str, context: dict[str, Any]) -> dict[str, Any]:
+        """Shape the body for whichever webhook we were given.
+
+        Slack reads `text` and Discord reads `content`; posting the wrong key
+        returns a 400 and the alert is silently lost. §8 says failure must
+        never be silent, so an alerting path that quietly drops messages is
+        worse than no alerting at all.
+        """
+        if "discord.com/api/webhooks" in self._url:
+            detail = " ".join(f"{k}={v}" for k, v in context.items())
+            return {"content": f"{message} {detail}".strip()}
+        return {"text": message, **context}
+
     def alert(self, message: str, **context: Any) -> None:
-        payload = {"text": message, **context}
+        payload = self._payload(message, context)
         self.sent.append(payload)
         log.warning("ALERT: %s %s", message, context or "")
         if not self._url:

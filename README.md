@@ -81,6 +81,10 @@ budget and would destroy the only honest measure of whether we found an edge.
 
 ## Getting started
 
+Credentials first — `docs/SETUP.md` walks through every value, including the
+two that are easy to get wrong (use Supabase's **pooler** connection string,
+and sign up to API-Football **directly**, not via RapidAPI).
+
 ```bash
 pip install -e ".[dev,scrape]"
 cp .env.example .env            # fill in DATABASE_URL and keys
@@ -151,6 +155,7 @@ counts table by table before uploading. An untested backup is a guess.
 
 ## Documentation
 
+- `docs/SETUP.md` — where every secret and variable comes from, click by click
 - `docs/OPERATIONS.md` — runbook, degradation drills, what to do when a gate fires
 - `docs/DEFINITION_OF_DONE.md` — the §10 checklist and its current state
 - `db/migrations/README.md` — how migrations are applied

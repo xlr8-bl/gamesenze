@@ -10,8 +10,25 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from typing import Any, Protocol, runtime_checkable
+from urllib.parse import urlparse
 
 Row = dict[str, Any]
+
+# Supabase's transaction-mode pooler listens here; session mode uses 5432 and
+# holds a connection for the whole session, so prepared statements are safe.
+TRANSACTION_POOLER_PORT = 6543
+
+
+def uses_transaction_pooler(dsn: str) -> bool:
+    """True when the DSN points at a connection pooler in transaction mode."""
+    try:
+        parsed = urlparse(dsn)
+    except ValueError:
+        return False
+    if parsed.port == TRANSACTION_POOLER_PORT:
+        return True
+    host = (parsed.hostname or "").lower()
+    return "pgbouncer" in host or "pooler" in host
 
 
 @runtime_checkable
@@ -39,7 +56,18 @@ class AsyncpgDb:
     async def connect(cls, dsn: str, *, min_size: int = 1, max_size: int = 4):
         import asyncpg  # imported lazily so tests need no driver
 
-        pool = await asyncpg.create_pool(dsn, min_size=min_size, max_size=max_size)
+        # GitHub Actions runners are IPv4-only and Supabase's direct database
+        # host is IPv6-only, so in practice every connection from CI goes
+        # through the pooler. Its transaction mode multiplexes one server
+        # connection across clients, which breaks asyncpg's prepared-statement
+        # cache with a "prepared statement already exists" error partway
+        # through a job — the worst kind of failure, because it works in
+        # testing and fails under concurrency.
+        kwargs: dict[str, Any] = {"min_size": min_size, "max_size": max_size}
+        if uses_transaction_pooler(dsn):
+            kwargs["statement_cache_size"] = 0
+
+        pool = await asyncpg.create_pool(dsn, **kwargs)
         return cls(pool)
 
     async def close(self) -> None:
