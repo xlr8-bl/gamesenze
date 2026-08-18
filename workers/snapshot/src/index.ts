@@ -40,10 +40,17 @@ interface DueLineup {
   vendor_fixture_id: string;
 }
 
-/** Cap per tick. The Worker request budget is vast (~200/day against 100k),
- *  but the vendor object budget is not, and a runaway tick would spend a
- *  month of SportsGameOdds objects in an afternoon. */
-const MAX_FIXTURES_PER_TICK = 8;
+/**
+ * Cap per tick. The Worker request budget is vast (~200/day against 100k), but
+ * the vendor object budget is not, and a runaway tick would spend a month of
+ * SportsGameOdds objects in an afternoon.
+ *
+ * The number is also half of a shared rate limit: the free plan allows 10
+ * requests/minute, and the hourly GitHub Actions fallback may be catching up
+ * in the same minute. 6 here plus 3 there stays under it. Keep this in step
+ * with WORKER_MAX_FIXTURES_PER_TICK in gamesenze/config.py.
+ */
+const MAX_FIXTURES_PER_TICK = 6;
 const VENDOR_TIMEOUT_MS = 8000;
 
 export default {

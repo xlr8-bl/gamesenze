@@ -88,14 +88,39 @@ Free tier is 100 requests/day, which is what §3.2 budgets against.
 
 `SPORTSGAMEODDS_KEY`
 
-Sign up at **sportsgameodds.com**, confirm your email, and copy the key from
-the dashboard. Sent as the `X-Api-Key` header.
+**The key is emailed to you. There is no dashboard showing it**, which is the
+usual reason people think signup failed.
 
-Free tier is 2,500 objects/month. One object is a whole event across every book
-and market, which is why §3.4 budgets 16 snapshots per fixture rather than
-counting individual prices.
+1. Go to **sportsgameodds.com/pricing**.
+2. Choose the **Amateur** plan — their word for it is "eternally free".
+3. Complete checkout. **It asks for a card**, and states it is never charged
+   unless you later choose to upgrade. If that is a blocker, see the note below.
+4. **Watch your inbox.** The key arrives by email within a couple of minutes.
+5. Nothing after a few minutes: check spam, then mail
+   **support@sportsgameodds.com**.
 
----
+Free "Amateur" tier, all of which this codebase is built around:
+
+| Limit | Value | Where it shows up |
+|---|---|---|
+| Objects/month | 2,500 | §3.3 plans 2,000, leaving a 500 reserve |
+| Requests/minute | 10 | Split 6 (Worker) / 3 (fallback) in `config.py` |
+| Update frequency | 10 min | Our tightest cadence is 15 min, so we never outpace it |
+| Coverage | 8 leagues, 9 bookmakers | Decide your 8 leagues before seeding aliases |
+
+The 10-minute update frequency is worth understanding: on the free plan a price
+you fetch may be up to 10 minutes stale at source. Our closest-to-kickoff
+window polls every 15 minutes, so we are never asking faster than they refresh
+— fetching more often would spend objects to receive the same numbers back.
+
+**If you would rather not enter a card**, the pipeline runs without this key —
+you simply get no odds, which means no publishable picks (the gate requires
+`odds_fresh`). Everything else works: fixtures, stats, scrapes, the QA layers
+and the audit. That is a reasonable way to validate the plumbing first and add
+odds when you are ready.
+
+Authentication is the `X-Api-Key` header, which is what
+`gamesenze/providers/sgo.py` sends.
 
 ## 4. Scraper contact — 1 value
 

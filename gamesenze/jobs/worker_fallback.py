@@ -11,16 +11,22 @@ because the gap is visible to §5.3's coverage-gap check and the lie is not.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from ..budget import BudgetExhausted
+from ..config import FALLBACK_MAX_CATCHUP, min_seconds_between_calls
 from ..degrade import policy_from_statuses
 from ..providers.sgo import SportsGameOdds
 from ._runtime import JobContext, run_job
 
 log = logging.getLogger("gamesenze.fallback")
 
-MAX_CATCHUP = 10
+# The Worker may be mid-tick while this runs, and both draw on the same
+# 10 requests/minute. The split lives in config so the two halves cannot drift
+# apart into a combined burst that earns a 429 — which would cost us objects
+# and return no prices.
+MAX_CATCHUP = FALLBACK_MAX_CATCHUP
 
 
 async def main(ctx: JobContext) -> int:
@@ -44,7 +50,10 @@ async def main(ctx: JobContext) -> int:
         ctx.settings.sportsgameodds_key, db=ctx.db, meter=ctx.meter, clock=ctx.clock
     )
     captured = 0
-    for row in due:
+    pace = min_seconds_between_calls("sportsgameodds")
+    for index, row in enumerate(due):
+        if index and pace:
+            await asyncio.sleep(pace)
         try:
             response = await client.event_odds(
                 str(row["fixture_id"]),

@@ -50,3 +50,33 @@ def test_alerting_never_raises_even_with_an_unreachable_webhook():
     alerter = Alerter("http://127.0.0.1:9/nope", timeout=0.05)
     alerter.alert("something broke")
     assert alerter.sent == [{"text": "something broke"}]
+
+
+def test_the_two_sgo_callers_together_stay_under_the_rate_limit():
+    """The Worker and the fallback share one 10 requests/minute allowance.
+
+    Both can fire in the same minute — the fallback runs hourly whether or not
+    the Worker is healthy. Exceeding the limit earns a 429, and since budget is
+    reserved before the call, a 429 spends an object and returns no prices.
+    """
+    from gamesenze.config import (
+        FALLBACK_MAX_CATCHUP,
+        RATE_LIMITS_PER_MINUTE,
+        WORKER_MAX_FIXTURES_PER_TICK,
+    )
+
+    combined = WORKER_MAX_FIXTURES_PER_TICK + FALLBACK_MAX_CATCHUP
+    assert combined <= RATE_LIMITS_PER_MINUTE["sportsgameodds"]
+
+
+def test_the_worker_constant_matches_config():
+    """The Worker cannot import Python, so its cap is duplicated in TypeScript."""
+    import re
+    from pathlib import Path
+
+    from gamesenze.config import WORKER_MAX_FIXTURES_PER_TICK
+
+    source = Path("workers/snapshot/src/index.ts").read_text()
+    match = re.search(r"const MAX_FIXTURES_PER_TICK = (\d+);", source)
+    assert match, "the Worker's per-tick cap was renamed or removed"
+    assert int(match.group(1)) == WORKER_MAX_FIXTURES_PER_TICK

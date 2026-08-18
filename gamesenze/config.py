@@ -52,6 +52,28 @@ API_FOOTBALL_DAILY_ALLOCATION: dict[str, int] = {
 }
 
 
+# Per-minute rate limits, distinct from the monthly object ceilings above. The
+# monthly budget says how much we may spend; these say how fast. Exceeding one
+# earns a 429, and because we reserve budget *before* the call (REQ-BUDGET-3),
+# a 429 costs us an object and returns nothing — the worst possible trade.
+RATE_LIMITS_PER_MINUTE: dict[str, int] = {
+    "sportsgameodds": 10,   # free "Amateur" plan
+}
+
+
+def min_seconds_between_calls(provider: str) -> float:
+    limit = RATE_LIMITS_PER_MINUTE.get(provider)
+    return 0.0 if not limit else 60.0 / limit
+
+
+# Two paths can call SportsGameOdds in the same minute: the Worker's per-minute
+# tick, and the hourly fallback catching up on captures the Worker missed. They
+# share one rate limit, so the caps are split rather than each assuming it has
+# the whole allowance. Keep the sum at or below RATE_LIMITS_PER_MINUTE.
+WORKER_MAX_FIXTURES_PER_TICK = 6
+FALLBACK_MAX_CATCHUP = 3
+
+
 # --- §3.3 SportsGameOdds monthly allocation --------------------------------
 # One object = one full event across all books and markets.
 SNAPSHOTS_PER_FIXTURE = 16
