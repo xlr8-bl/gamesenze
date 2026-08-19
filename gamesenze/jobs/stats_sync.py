@@ -61,69 +61,122 @@ async def competition_ids_by_name(ctx: JobContext) -> dict[str, str]:
     return {r["name"]: r["id"] for r in rows}
 
 
-async def find_or_create_fixture(
-    ctx: JobContext,
-    competition_id: str,
-    home_id: str,
-    away_id: str,
-    kickoff_at: datetime,
-    home_goals: int | None,
-    away_goals: int | None,
-    vendor_game_id: str,
-) -> str:
-    existing = await ctx.db.fetchval(
+async def find_or_create_fixtures(
+    ctx: JobContext, games: list[dict]
+) -> dict[str, str]:
+    """Batch version of "find or create one fixture per game".
+
+    A full season across 3 leagues is ~1,100 games — doing this one game at a
+    time (a SELECT plus an UPDATE-or-INSERT each) was the exact same
+    one-row-per-round-trip mistake already fixed twice today in seed.py and
+    odds_sync.py, just not caught before this job shipped: ~3,000+ sequential
+    round trips, seen live as the command appearing to hang for 15+ minutes.
+    Three round trips total instead: one to match every game against
+    existing fixtures at once (a LATERAL join against the whole batch), one
+    to bulk-update the matches found, one to bulk-insert the rest.
+
+    Returns {game_id: fixture_id} for every game that had both teams
+    resolved (the caller filters unresolved ones out before calling this).
+    """
+    if not games:
+        return {}
+
+    matches = await ctx.db.fetch(
         """
-        select id from fixtures
-         where competition_id = $1 and home_team_id = $2 and away_team_id = $3
-           and kickoff_at between $4 and $5
-         order by abs(extract(epoch from (kickoff_at - $6)))
-         limit 1
+        select input.game_id, f.id as fixture_id
+          from unnest($1::text[], $2::uuid[], $3::uuid[], $4::uuid[],
+                      $5::timestamptz[]) as input(game_id, competition_id,
+                                                   home_id, away_id, kickoff_at)
+          left join lateral (
+              select id from fixtures
+               where competition_id = input.competition_id
+                 and home_team_id = input.home_id
+                 and away_team_id = input.away_id
+                 and kickoff_at between input.kickoff_at - $6::interval
+                                     and input.kickoff_at + $6::interval
+               order by abs(extract(epoch from (kickoff_at - input.kickoff_at)))
+               limit 1
+          ) f on true
         """,
-        competition_id,
-        home_id,
-        away_id,
-        kickoff_at - KICKOFF_TOLERANCE,
-        kickoff_at + KICKOFF_TOLERANCE,
-        kickoff_at,
+        [g["game_id"] for g in games],
+        [g["competition_id"] for g in games],
+        [g["home_id"] for g in games],
+        [g["away_id"] for g in games],
+        [g["kickoff_at"] for g in games],
+        KICKOFF_TOLERANCE,
     )
-    if existing is not None:
+    fixture_by_game = {
+        m["game_id"]: str(m["fixture_id"]) for m in matches if m["fixture_id"]
+    }
+
+    to_update = [g for g in games if g["game_id"] in fixture_by_game]
+    if to_update:
         await ctx.db.execute(
             """
-            update fixtures set status = 'finished', home_goals = $2,
-                   away_goals = $3, updated_at = now()
-             where id = $1
+            update fixtures set status = 'finished', home_goals = u.home_goals,
+                   away_goals = u.away_goals, updated_at = now()
+              from unnest($1::uuid[], $2::int[], $3::int[])
+                   as u(id, home_goals, away_goals)
+             where fixtures.id = u.id
             """,
-            existing,
-            home_goals,
-            away_goals,
+            [fixture_by_game[g["game_id"]] for g in to_update],
+            [g["home_goals"] for g in to_update],
+            [g["away_goals"] for g in to_update],
         )
-        return str(existing)
 
-    fixture_id = await ctx.db.fetchval(
-        """
-        insert into fixtures (sport, competition_id, home_team_id, away_team_id,
-                              kickoff_at, status, home_goals, away_goals)
-        values ('football', $1, $2, $3, $4, 'finished', $5, $6)
-        returning id
-        """,
-        competition_id,
-        home_id,
-        away_id,
-        kickoff_at,
-        home_goals,
-        away_goals,
-    )
-    await ctx.db.execute(
-        """
-        insert into fixture_source_ids (fixture_id, source, source_id)
-        values ($1, $2, $3)
-        on conflict (source, source_id) do nothing
-        """,
-        fixture_id,
-        SOURCE,
-        vendor_game_id,
-    )
-    return str(fixture_id)
+    to_create = [g for g in games if g["game_id"] not in fixture_by_game]
+    if to_create:
+        created = await ctx.db.fetch(
+            """
+            insert into fixtures (sport, competition_id, home_team_id,
+                                  away_team_id, kickoff_at, status, home_goals,
+                                  away_goals)
+            select 'football', u.competition_id, u.home_team_id, u.away_team_id,
+                   u.kickoff_at, 'finished', u.home_goals, u.away_goals
+              from unnest(
+                  $1::uuid[], $2::uuid[], $3::uuid[], $4::timestamptz[],
+                  $5::int[], $6::int[]
+              ) as u(competition_id, home_team_id, away_team_id, kickoff_at,
+                     home_goals, away_goals)
+            returning id, home_team_id, away_team_id, kickoff_at
+            """,
+            [g["competition_id"] for g in to_create],
+            [g["home_id"] for g in to_create],
+            [g["away_id"] for g in to_create],
+            [g["kickoff_at"] for g in to_create],
+            [g["home_goals"] for g in to_create],
+            [g["away_goals"] for g in to_create],
+        )
+        # Matched back by (home, away, kickoff_at) rather than by position:
+        # correct regardless of whether Postgres preserves unnest() order,
+        # and that triple is unique within one batch (the same two teams do
+        # not play twice at the same kickoff time in one season).
+        by_triple = {
+            (str(r["home_team_id"]), str(r["away_team_id"]), r["kickoff_at"]): str(
+                r["id"]
+            )
+            for r in created
+        }
+        for g in to_create:
+            key = (str(g["home_id"]), str(g["away_id"]), g["kickoff_at"])
+            fixture_id = by_triple.get(key)
+            if fixture_id is not None:
+                fixture_by_game[g["game_id"]] = fixture_id
+
+        created_game_ids = [g["game_id"] for g in to_create if g["game_id"] in fixture_by_game]
+        if created_game_ids:
+            await ctx.db.execute(
+                """
+                insert into fixture_source_ids (fixture_id, source, source_id)
+                select * from unnest($1::uuid[], $2::text[], $3::text[])
+                on conflict (source, source_id) do nothing
+                """,
+                [fixture_by_game[game_id] for game_id in created_game_ids],
+                [SOURCE] * len(created_game_ids),
+                created_game_ids,
+            )
+
+    return fixture_by_game
 
 
 def _parse_kickoff(date_str: str) -> datetime:
@@ -187,54 +240,90 @@ def parse_understat_rows(rows: list[dict]) -> list[dict]:
 
 
 async def sync_understat_stats(ctx: JobContext, rows: list[dict]) -> tuple[int, int]:
-    """Resolve, match, and write. Returns (matches_written, sides_unresolved)."""
+    """Resolve, match, and write — batched throughout. Returns
+    (matches_written, sides_unresolved).
+    """
     resolver = TeamResolver(ctx.db, ctx.clock)
     comp_ids = await competition_ids_by_name(ctx)
     parsed = parse_understat_rows(rows)
 
-    # One fixture per game_id, resolved once and reused by both its sides.
-    fixture_cache: dict[str, str | None] = {}
-    matches_written = 0
+    for side in parsed:
+        side["competition_id"] = comp_ids.get(side["league"])
+        # try_resolve() caches in-process, so a team appearing in dozens of
+        # matches this season still costs one round trip, not one per row.
+        side["team_id"] = await resolver.try_resolve(SOURCE, side["team"])
+
+    by_game: dict[str, list[dict]] = {}
+    for side in parsed:
+        by_game.setdefault(side["game_id"], []).append(side)
+
+    games: dict[str, dict] = {}
+    for game_id, sides in by_game.items():
+        home = next((s for s in sides if s["is_home"]), None)
+        away = next((s for s in sides if not s["is_home"]), None)
+        if home is None or away is None:
+            continue
+        if home["competition_id"] is None:
+            continue
+        if home["team_id"] is None or away["team_id"] is None:
+            continue
+        games[game_id] = {
+            "game_id": game_id,
+            "competition_id": home["competition_id"],
+            "home_id": home["team_id"],
+            "away_id": away["team_id"],
+            "kickoff_at": home["kickoff_at"],
+            "home_goals": home["home_goals"],
+            "away_goals": home["away_goals"],
+        }
+
+    fixture_by_game = await find_or_create_fixtures(ctx, list(games.values()))
+
+    # Keyed by (fixture_id, team_id) so a within-batch collision overwrites
+    # rather than appends: Postgres flatly rejects an ON CONFLICT DO UPDATE
+    # that would affect the same row twice in one statement
+    # (CardinalityViolationError), and two vendor rows resolving to the same
+    # fixture+team is the same fact arriving twice, not two facts.
+    resolved_sides: dict[tuple[str, str], dict] = {}
     unresolved = 0
 
     for side in parsed:
-        competition_id = comp_ids.get(side["league"])
-        if competition_id is None:
+        if side["competition_id"] is None:
             continue
-
-        if side["game_id"] not in fixture_cache:
-            home_id = await resolver.try_resolve(SOURCE, side["home_team"])
-            away_id = await resolver.try_resolve(SOURCE, side["away_team"])
-            if home_id is None or away_id is None:
-                fixture_cache[side["game_id"]] = None
-            else:
-                fixture_cache[side["game_id"]] = await find_or_create_fixture(
-                    ctx,
-                    competition_id,
-                    home_id,
-                    away_id,
-                    side["kickoff_at"],
-                    side["home_goals"],
-                    side["away_goals"],
-                    side["game_id"],
-                )
-
-        fixture_id = fixture_cache[side["game_id"]]
-        if fixture_id is None:
+        fixture_id = fixture_by_game.get(side["game_id"])
+        if fixture_id is None or side["team_id"] is None:
             unresolved += 1
             continue
+        resolved_sides[(fixture_id, side["team_id"])] = {**side, "fixture_id": fixture_id}
 
-        team_id = await resolver.try_resolve(SOURCE, side["team"])
-        if team_id is None:
-            unresolved += 1
-            continue
+    tms: dict[str, list] = {
+        "fixture_id": [], "team_id": [], "kickoff_at": [], "is_home": [],
+        "goals_for": [], "goals_against": [], "xg": [], "xga": [], "ppda": [],
+    }
+    for side in resolved_sides.values():
+        tms["fixture_id"].append(side["fixture_id"])
+        tms["team_id"].append(side["team_id"])
+        tms["kickoff_at"].append(side["kickoff_at"])
+        tms["is_home"].append(side["is_home"])
+        tms["goals_for"].append(side["goals_for"])
+        tms["goals_against"].append(side["goals_against"])
+        tms["xg"].append(side["xg"])
+        tms["xga"].append(side["xga"])
+        tms["ppda"].append(side["ppda"])
 
+    if tms["fixture_id"]:
         await ctx.db.execute(
             """
             insert into team_match_stats (fixture_id, team_id, kickoff_at, status,
                                           is_home, goals_for, goals_against, xg,
                                           xga, ppda, source)
-            values ($1, $2, $3, 'finished', $4, $5, $6, $7, $8, $9, $10)
+            select f.fixture_id, f.team_id, f.kickoff_at, 'finished', f.is_home,
+                   f.goals_for, f.goals_against, f.xg, f.xga, f.ppda, $10
+              from unnest(
+                  $1::uuid[], $2::uuid[], $3::timestamptz[], $4::bool[],
+                  $5::int[], $6::int[], $7::numeric[], $8::numeric[], $9::numeric[]
+              ) as f(fixture_id, team_id, kickoff_at, is_home, goals_for,
+                     goals_against, xg, xga, ppda)
             on conflict (fixture_id, team_id, source) do update
                 set goals_for = excluded.goals_for,
                     goals_against = excluded.goals_against,
@@ -242,20 +331,19 @@ async def sync_understat_stats(ctx: JobContext, rows: list[dict]) -> tuple[int, 
                     xga = excluded.xga,
                     ppda = excluded.ppda
             """,
-            fixture_id,
-            team_id,
-            side["kickoff_at"],
-            side["is_home"],
-            side["goals_for"],
-            side["goals_against"],
-            side["xg"],
-            side["xga"],
-            side["ppda"],
+            tms["fixture_id"],
+            tms["team_id"],
+            tms["kickoff_at"],
+            tms["is_home"],
+            tms["goals_for"],
+            tms["goals_against"],
+            tms["xg"],
+            tms["xga"],
+            tms["ppda"],
             SOURCE,
         )
-        matches_written += 1
 
-    return matches_written, unresolved
+    return len(tms["fixture_id"]), unresolved
 
 
 async def sync_from_scrape_result(

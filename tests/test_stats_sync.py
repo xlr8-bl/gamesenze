@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 
 from gamesenze.jobs.stats_sync import (
     LEAGUE_NAMES,
-    find_or_create_fixture,
+    find_or_create_fixtures,
     parse_understat_rows,
     sync_from_scrape_result,
     sync_understat_stats,
@@ -115,7 +115,19 @@ async def _competition(pg, name: str) -> str:
     )
 
 
-async def test_find_or_create_fixture_creates_a_finished_historical_fixture(
+def _game(comp, home, away, kickoff, home_goals=4, away_goals=2, game_id="28778"):
+    return {
+        "game_id": game_id,
+        "competition_id": comp,
+        "home_id": home,
+        "away_id": away,
+        "kickoff_at": kickoff,
+        "home_goals": home_goals,
+        "away_goals": away_goals,
+    }
+
+
+async def test_find_or_create_fixtures_creates_a_finished_historical_fixture(
     job_ctx, pg
 ):
     comp = await _competition(pg, "Premier League")
@@ -123,10 +135,9 @@ async def test_find_or_create_fixture_creates_a_finished_historical_fixture(
     away = await _team(pg, "Bournemouth")
     kickoff = datetime(2025, 8, 15, 19, 0, tzinfo=UTC)
 
-    fixture_id = await find_or_create_fixture(
-        job_ctx, comp, home, away, kickoff, 4, 2, "28778"
-    )
+    by_game = await find_or_create_fixtures(job_ctx, [_game(comp, home, away, kickoff)])
 
+    fixture_id = by_game["28778"]
     row = await pg.fetchrow(
         "select status, home_goals, away_goals from fixtures where id = $1",
         fixture_id,
@@ -142,7 +153,7 @@ async def test_find_or_create_fixture_creates_a_finished_historical_fixture(
     assert source_id == "28778"
 
 
-async def test_find_or_create_fixture_reuses_an_already_synced_fixture(job_ctx, pg):
+async def test_find_or_create_fixtures_reuses_an_already_synced_fixture(job_ctx, pg):
     comp = await _competition(pg, "Premier League")
     home = await _team(pg, "Liverpool")
     away = await _team(pg, "Bournemouth")
@@ -157,13 +168,53 @@ async def test_find_or_create_fixture_reuses_an_already_synced_fixture(job_ctx, 
         kickoff,
     )
 
-    found = await find_or_create_fixture(
-        job_ctx, comp, home, away, kickoff + timedelta(minutes=5), 4, 2, "28778"
+    by_game = await find_or_create_fixtures(
+        job_ctx, [_game(comp, home, away, kickoff + timedelta(minutes=5))]
     )
 
+    found = by_game["28778"]
     assert found == str(existing_id)
     status = await pg.fetchval("select status from fixtures where id = $1", found)
     assert status == "finished"
+
+
+async def test_find_or_create_fixtures_handles_a_mixed_batch(job_ctx, pg):
+    """One game already synced (must be reused, not duplicated), one entirely
+    new (must be created) — in the same batch, exercising both the matched
+    and unmatched paths of the single combined query."""
+    comp = await _competition(pg, "Premier League")
+    liverpool = await _team(pg, "Liverpool")
+    bournemouth = await _team(pg, "Bournemouth")
+    villa = await _team(pg, "Aston Villa")
+    newcastle = await _team(pg, "Newcastle United")
+    kickoff_a = datetime(2025, 8, 15, 19, 0, tzinfo=UTC)
+    kickoff_b = datetime(2025, 8, 16, 11, 30, tzinfo=UTC)
+
+    existing_id = await pg.fetchval(
+        "insert into fixtures (sport, competition_id, home_team_id, away_team_id, "
+        "kickoff_at, status) values ('football', $1, $2, $3, $4, 'scheduled') "
+        "returning id",
+        comp,
+        liverpool,
+        bournemouth,
+        kickoff_a,
+    )
+
+    by_game = await find_or_create_fixtures(
+        job_ctx,
+        [
+            _game(comp, liverpool, bournemouth, kickoff_a, game_id="28778"),
+            _game(comp, villa, newcastle, kickoff_b, home_goals=1, away_goals=0, game_id="28779"),
+        ],
+    )
+
+    assert by_game["28778"] == str(existing_id)
+    assert by_game["28779"] != str(existing_id)
+    new_row = await pg.fetchrow(
+        "select status, home_goals, away_goals from fixtures where id = $1",
+        by_game["28779"],
+    )
+    assert dict(new_row) == {"status": "finished", "home_goals": 1, "away_goals": 0}
 
 
 async def test_sync_understat_stats_writes_both_sides_and_is_idempotent(job_ctx, pg):
@@ -191,6 +242,32 @@ async def test_sync_understat_stats_writes_both_sides_and_is_idempotent(job_ctx,
     assert rows[0]["goals_for"] == 4
     assert rows[1]["team_id"] == away
     assert rows[1]["goals_for"] == 2
+
+
+async def test_two_vendor_rows_resolving_to_the_same_fixture_do_not_collide(job_ctx, pg):
+    """Postgres flatly rejects an ON CONFLICT DO UPDATE that would affect the
+    same row twice in one statement (CardinalityViolationError) — caught by
+    a large-batch benchmark, not by inspection. Two different game_ids that
+    both match the same already-synced fixture (a real possibility: a
+    rescheduled or duplicate vendor entry) must not crash the whole batch.
+    """
+    await _competition(pg, "Premier League")
+    home = await _team(pg, "Liverpool")
+    away = await _team(pg, "Bournemouth")
+    await _alias(pg, home, "Liverpool")
+    await _alias(pg, away, "Bournemouth")
+
+    duplicate_row = {**REAL_ROW, "game_id": 99999}
+
+    written, unresolved = await sync_understat_stats(job_ctx, [REAL_ROW, duplicate_row])
+
+    assert unresolved == 0
+    assert written == 2  # collapsed to one fixture's worth, not four rows
+    count = await pg.fetchval(
+        "select count(*) from team_match_stats where team_id = any($1::uuid[])",
+        [home, away],
+    )
+    assert count == 2
 
 
 async def test_an_unresolvable_team_blocks_that_sides_row_not_the_other(job_ctx, pg):
