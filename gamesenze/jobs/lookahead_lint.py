@@ -137,7 +137,7 @@ def scan(root: Path) -> list[Finding]:
         if not base.exists():
             continue
         for path in sorted(base.rglob("*.py")):
-            tree = ast.parse(path.read_text(), filename=str(path))
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             visitor = LookaheadVisitor(path.relative_to(root))
             # Two passes: docstrings are registered by their parent node, which
             # a single walk would reach only after visiting the string itself.

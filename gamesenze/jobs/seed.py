@@ -16,7 +16,7 @@ SEED = Path(__file__).resolve().parents[2] / "db" / "seed" / "teams.json"
 
 
 async def main(ctx: JobContext) -> int:
-    data = json.loads(SEED.read_text())
+    data = json.loads(SEED.read_text(encoding="utf-8"))
 
     for comp in data["competitions"]:
         await ctx.db.execute(

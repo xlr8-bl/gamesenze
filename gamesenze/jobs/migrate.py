@@ -29,7 +29,7 @@ async def apply(dsn: str, *, dry_run: bool) -> int:
     try:
         for f in files:
             print(f"applying {f.name}")
-            await db.execute(f.read_text())
+            await db.execute(f.read_text(encoding="utf-8"))
     finally:
         await db.close()
     print(f"{len(files)} migrations applied")

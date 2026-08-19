@@ -953,6 +953,20 @@
         "Real Racing Club de Santander",
         "Racing de Santander"
       ]
+    },
+    {
+      "canonical": "Deportivo Alavés",
+      "country": "Spain",
+      "variants": [
+        "Deportivo Alaves"
+      ]
+    },
+    {
+      "canonical": "Elche",
+      "country": "Spain",
+      "variants": [
+        "Elche CF"
+      ]
     }
   ],
   "sources": [
