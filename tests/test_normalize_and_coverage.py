@@ -64,6 +64,27 @@ async def test_an_unknown_name_blocks_and_never_guesses(clock):
     assert flags[0][1][5] == "block"  # severity
 
 
+async def test_an_unresolved_name_is_also_cached_within_a_job(clock):
+    """A team can appear in ~38 matches a season; without this, a single
+    unresolvable name cost 3 round trips (a lookup, an unresolved_team_names
+    upsert, a QA flag upsert) *per occurrence* instead of once per job run.
+    Seen live: a real season's worth of Understat data with several
+    genuinely unresolved names turned a batched job into one that hung for
+    10+ minutes and had to be killed.
+    """
+    db = FakeDb({"select canonical_team_id": None})
+    resolver = TeamResolver(db, clock)
+
+    with pytest.raises(UnresolvedTeamName):
+        await resolver.resolve("fbref", "Who FC")
+    with pytest.raises(UnresolvedTeamName):
+        await resolver.resolve("fbref", "Who FC")
+
+    assert len(db.writes_matching("select canonical_team_id")) == 1
+    assert len(db.writes_matching("insert into unresolved_team_names")) == 1
+    assert len(db.writes_matching("insert into qa_flags")) == 1
+
+
 async def test_resolution_is_cached_within_a_job(clock):
     db = FakeDb({"select canonical_team_id": "team-uuid"})
     resolver = TeamResolver(db, clock)
@@ -88,6 +109,22 @@ async def test_adding_an_alias_clears_the_backlog_entry(clock):
     assert db.wrote("insert into team_aliases")
     assert db.wrote("update unresolved_team_names set resolved_at")
     # And it is cached, so the next lookup does not hit the database.
+    assert await resolver.resolve("fbref", "Man Utd") == "team-uuid"
+
+
+async def test_adding_an_alias_overrides_an_earlier_failure_in_the_same_job(clock):
+    """A name that failed earlier in a run (and is now negatively cached)
+    must resolve immediately once add_alias makes it valid — not keep
+    raising from the stale failure cache for the rest of the run.
+    """
+    db = FakeDb({"select canonical_team_id": None})
+    resolver = TeamResolver(db, clock)
+
+    with pytest.raises(UnresolvedTeamName):
+        await resolver.resolve("fbref", "Man Utd")
+
+    await resolver.add_alias("fbref", "Man Utd", "team-uuid")
+
     assert await resolver.resolve("fbref", "Man Utd") == "team-uuid"
 
 

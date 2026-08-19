@@ -114,7 +114,20 @@ class TeamResolver:
     """Exact alias lookup with an in-process cache.
 
     The cache matters: fixture sync resolves the same twenty names repeatedly
-    within one job, and each miss would otherwise be a round trip.
+    within one job, and each miss would otherwise be a round trip. It caches
+    failures too — an unresolved name recurs once per match a team plays (up
+    to ~38 times a season), and without this a single unresolvable team name
+    cost 3 round trips (a lookup, an unresolved_team_names upsert, a QA flag
+    upsert) *per occurrence* rather than once per job run. Seen live: with a
+    real season's worth of Understat data and several genuinely unresolved
+    names, that turned a batched job that should run in seconds into one
+    that hung for 10+ minutes and had to be killed.
+
+    The one behavioural cost: `unresolved_team_names.sightings` now counts
+    roughly "distinct job runs this name was seen in" rather than "every
+    individual row it appeared in" — arguably the more useful number for a
+    human deciding whether a backlog entry is worth resolving, and a
+    reasonable trade for not redoing the same two writes hundreds of times.
     """
 
     def __init__(self, db: Db, clock: Clock | None = None) -> None:
@@ -122,6 +135,7 @@ class TeamResolver:
         self._clock = clock or SystemClock()
         self._flags = FlagStore(db, clock)
         self._cache: dict[tuple[str, str], str] = {}
+        self._unresolved_cache: set[tuple[str, str]] = set()
 
     async def resolve(
         self, source: str, source_name: str, *, fixture_id: str | None = None
@@ -130,6 +144,8 @@ class TeamResolver:
         cache_key = (source, source_name)
         if cache_key in self._cache:
             return self._cache[cache_key]
+        if cache_key in self._unresolved_cache:
+            raise UnresolvedTeamName(source, source_name)
 
         team_id = await self._db.fetchval(
             "select canonical_team_id from team_aliases "
@@ -139,6 +155,7 @@ class TeamResolver:
         )
 
         if team_id is None:
+            self._unresolved_cache.add(cache_key)
             await self._record_unresolved(source, source_name)
             await self._flags.raise_flag(
                 "fixture" if fixture_id else "team",
@@ -209,6 +226,7 @@ class TeamResolver:
             self._clock.now(),
         )
         self._cache[(source, source_name)] = canonical_team_id
+        self._unresolved_cache.discard((source, source_name))
 
     async def backlog(self) -> list[dict]:
         return await self._db.fetch(
