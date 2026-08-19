@@ -215,3 +215,33 @@ class TeamResolver:
             "select * from unresolved_team_names where resolved_at is null "
             "order by sightings desc, last_seen desc"
         )
+
+    async def sweep_resolved(self) -> int:
+        """Auto-clear backlog entries a later alias made resolvable.
+
+        `unresolved_team_names` is written on every failed lookup but only
+        ever cleared by an explicit `add_alias` call — reseeding with a
+        correct variant does not touch it. Left alone, the backlog shows
+        every name that has *ever* failed, including ones that resolve fine
+        right now, which is exactly the confusion this method exists to
+        remove: a human reading a 130-line backlog where most entries already
+        have a 1.00 match has no way to tell "still broken" from "already
+        fixed, nobody told this table."
+
+        Calling `try_resolve` on an already-resolvable name is side-effect
+        free — it hits the cache path in `resolve()` and returns, no re-flag,
+        no re-record. Only genuinely unresolved names touch those paths.
+        """
+        cleared = 0
+        for row in await self.backlog():
+            team_id = await self.try_resolve(row["source"], row["source_name"])
+            if team_id is not None:
+                await self._db.execute(
+                    "update unresolved_team_names set resolved_at = $3 "
+                    "where source = $1 and source_name = $2",
+                    row["source"],
+                    row["source_name"],
+                    self._clock.now(),
+                )
+                cleared += 1
+        return cleared

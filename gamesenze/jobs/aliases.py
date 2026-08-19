@@ -22,6 +22,12 @@ async def main(ctx: JobContext) -> int:
     resolver = TeamResolver(ctx.db, ctx.clock)
 
     if command == "backlog":
+        cleared = await resolver.sweep_resolved()
+        if cleared:
+            print(f"auto-cleared {cleared} entr{'y' if cleared == 1 else 'ies'} "
+                  "that already resolve (a later reseed made them fixable; "
+                  "nothing needed from you for these)\n")
+
         rows = await resolver.backlog()
         if not rows:
             print("backlog empty — every ingested name resolved")

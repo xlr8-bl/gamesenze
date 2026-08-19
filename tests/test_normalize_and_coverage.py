@@ -140,3 +140,47 @@ async def test_room_and_headroom_means_admitted(clock):
 
     assert decision.admitted
     assert decision.objects_required == 16
+
+
+async def test_sweep_resolved_clears_stale_backlog_entries(clock):
+    # The exact scenario this fixes: a name failed once, an alias was added
+    # later (e.g. by reseeding), and nothing ever told unresolved_team_names.
+    db = FakeDb(
+        {
+            "select * from unresolved_team_names": [
+                {"source": "football_data", "source_name": "Liverpool FC",
+                 "sightings": 3}
+            ],
+            "select canonical_team_id": "team-uuid",  # now resolves
+        }
+    )
+    resolver = TeamResolver(db, clock)
+
+    cleared = await resolver.sweep_resolved()
+
+    assert cleared == 1
+    assert db.wrote("update unresolved_team_names set resolved_at")
+
+
+async def test_sweep_resolved_leaves_genuinely_unresolved_entries(clock):
+    db = FakeDb(
+        {
+            "select * from unresolved_team_names": [
+                {"source": "football_data", "source_name": "Some New Club",
+                 "sightings": 1}
+            ],
+            "select canonical_team_id": None,  # still does not resolve
+        }
+    )
+    resolver = TeamResolver(db, clock)
+
+    cleared = await resolver.sweep_resolved()
+
+    assert cleared == 0
+    assert not db.wrote("update unresolved_team_names set resolved_at")
+
+
+async def test_sweep_resolved_on_an_empty_backlog_is_a_no_op(clock):
+    db = FakeDb({"select * from unresolved_team_names": []})
+    resolver = TeamResolver(db, clock)
+    assert await resolver.sweep_resolved() == 0
