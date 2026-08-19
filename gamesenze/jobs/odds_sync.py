@@ -165,16 +165,8 @@ async def main(ctx: JobContext) -> int:
                 matched += 1
 
     if snap_fixture_ids:
-        await ctx.db.execute(
-            """
-            insert into odds_snapshots (fixture_id, captured_at, bookmaker,
-                                        market, selection, decimal_odds,
-                                        window_label, is_closing)
-            select * from unnest(
-                $1::uuid[], $2::timestamptz[], $3::text[], $4::text[],
-                $5::text[], $6::numeric[], $7::text[], $8::bool[]
-            )
-            """,
+        await _insert_odds_snapshots(
+            ctx,
             snap_fixture_ids,
             snap_captured_ats,
             snap_bookmakers,
@@ -190,6 +182,48 @@ async def main(ctx: JobContext) -> int:
         f"matched to a fixture, {rejected} odds row(s) rejected by QA"
     )
     return 0
+
+
+_INSERT_ODDS_SQL = """
+    insert into odds_snapshots (fixture_id, captured_at, bookmaker,
+                                market, selection, decimal_odds,
+                                window_label, is_closing)
+    select * from unnest(
+        $1::uuid[], $2::timestamptz[], $3::text[], $4::text[],
+        $5::text[], $6::numeric[], $7::text[], $8::bool[]
+    )
+    -- Same (fixture, bookmaker, market, selection, captured_at) twice is
+    -- the same fact twice, not new information — this is what makes the
+    -- retry below safe rather than a silent double-write if the first
+    -- attempt actually committed before a dropped-connection error
+    -- reached us.
+    on conflict (fixture_id, bookmaker, market, selection, captured_at)
+        do nothing
+"""
+
+
+async def _insert_odds_snapshots(ctx: JobContext, *columns) -> None:
+    """Write the batch, retrying once if a pooled connection drops mid-write.
+
+    Safe to retry because of the on-conflict clause in _INSERT_ODDS_SQL: a
+    duplicate of the same insert is a no-op, not a double-write. Seen live
+    on a flaky client connection: `ConnectionDoesNotExistError` raised from
+    inside the query itself, after several successful vendor calls already
+    did the expensive part of the job — losing all of that to one dropped
+    connection is worse than one retry.
+    """
+    import asyncpg
+
+    try:
+        await ctx.db.execute(_INSERT_ODDS_SQL, *columns)
+    except (
+        asyncpg.exceptions.ConnectionDoesNotExistError,
+        asyncpg.exceptions.InterfaceError,
+        OSError,
+    ):
+        log.warning("odds_snapshots write hit a dropped connection; retrying once")
+        await asyncio.sleep(1.0)
+        await ctx.db.execute(_INSERT_ODDS_SQL, *columns)
 
 
 def _parse_commence(value: str | None):

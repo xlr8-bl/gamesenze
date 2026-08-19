@@ -256,3 +256,47 @@ async def test_main_matches_a_fixture_and_backlogs_an_unresolved_one(
         "order by source_name"
     )
     assert [r["source_name"] for r in backlog] == ["Nobody FC", "Nowhere United"]
+
+
+async def test_resubmitting_the_same_batch_does_not_duplicate_rows(job_ctx, pg):
+    """Pins the correctness half of the write-retry story.
+
+    tests/test_odds_sync_retry.py pins that _insert_odds_snapshots actually
+    retries on a dropped connection; this pins that doing so is safe — the
+    same batch submitted twice (what a retry after an ambiguous connection
+    drop looks like from the database's side) must not double the rows.
+    """
+    comp = await _competition(pg, "Premier League")
+    home = await _team(pg, "Arsenal")
+    away = await _team(pg, "Coventry City")
+    fixture_id = await pg.fetchval(
+        "insert into fixtures (sport, competition_id, home_team_id, away_team_id, "
+        "kickoff_at, status) values ('football', $1, $2, $3, $4, 'scheduled') "
+        "returning id",
+        comp,
+        home,
+        away,
+        KICKOFF,
+    )
+
+    from gamesenze.jobs.odds_sync import _insert_odds_snapshots
+
+    captured_at = KICKOFF - timedelta(days=1)
+    columns = (
+        [fixture_id],
+        [captured_at],
+        ["pinnacle"],
+        ["h2h"],
+        ["home"],
+        [1.5],
+        ["daily"],
+        [False],
+    )
+
+    await _insert_odds_snapshots(job_ctx, *columns)
+    await _insert_odds_snapshots(job_ctx, *columns)  # the "retry"
+
+    count = await pg.fetchval(
+        "select count(*) from odds_snapshots where fixture_id = $1", fixture_id
+    )
+    assert count == 1

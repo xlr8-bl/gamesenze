@@ -8,9 +8,12 @@ also what lets the test suite run the whole QA pipeline without a server.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
-from typing import Any, Protocol, runtime_checkable
+import asyncio
+from collections.abc import Awaitable, Callable, Iterable, Sequence
+from typing import Any, Protocol, TypeVar, runtime_checkable
 from urllib.parse import urlparse
+
+T = TypeVar("T")
 
 Row = dict[str, Any]
 
@@ -73,23 +76,53 @@ class AsyncpgDb:
     async def close(self) -> None:
         await self._pool.close()
 
+    async def _read(self, fn: Callable[[Any], Awaitable[T]]) -> T:
+        """Acquire a connection, run a read, retry once on a dropped one.
+
+        A pooled connection can go stale between the pool handing it out and
+        the query actually running — a network blip on the client side, or
+        Supabase's pooler recycling it — and asyncpg surfaces that as a
+        connection error on the query itself, not on acquire(). Seen live on
+        a flaky Windows connection. Reads are always safe to retry: there is
+        no side effect to duplicate. Writes are not (see execute() below), so
+        this retry deliberately does not cover them.
+        """
+        import asyncpg
+
+        try:
+            async with self._pool.acquire() as conn:
+                return await fn(conn)
+        except (
+            asyncpg.exceptions.ConnectionDoesNotExistError,
+            asyncpg.exceptions.InterfaceError,
+            OSError,
+        ):
+            await asyncio.sleep(1.0)
+            async with self._pool.acquire() as conn:
+                return await fn(conn)
+
     async def execute(self, sql: str, *args: Any) -> str:
+        # No automatic retry here: if the connection drops after the command
+        # reached the server but before its acknowledgement reached us, the
+        # write may already be committed, and blindly resending it would
+        # silently duplicate data — exactly what this codebase's alias and
+        # fixture-resolution discipline exists to prevent elsewhere. A
+        # write-side retry is safe only where the statement itself is
+        # idempotent (an upsert, an `on conflict do nothing`); that is a
+        # decision for the caller to make, not this generic layer.
         async with self._pool.acquire() as conn:
             return await conn.execute(sql, *args)
 
     async def fetch(self, sql: str, *args: Any) -> list[Row]:
-        async with self._pool.acquire() as conn:
-            rows = await conn.fetch(sql, *args)
+        rows = await self._read(lambda conn: conn.fetch(sql, *args))
         return [dict(r) for r in rows]
 
     async def fetchrow(self, sql: str, *args: Any) -> Row | None:
-        async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(sql, *args)
+        row = await self._read(lambda conn: conn.fetchrow(sql, *args))
         return dict(row) if row is not None else None
 
     async def fetchval(self, sql: str, *args: Any) -> Any:
-        async with self._pool.acquire() as conn:
-            return await conn.fetchval(sql, *args)
+        return await self._read(lambda conn: conn.fetchval(sql, *args))
 
 
 async def executemany(db: Db, sql: str, rows: Iterable[Sequence[Any]]) -> int:
