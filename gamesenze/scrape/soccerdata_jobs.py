@@ -75,6 +75,16 @@ class SoccerDataScraper:
         """Player quality ratings and attribute sub-ratings. Monthly."""
         return await self._run("sofifa", "player_ratings", leagues, seasons)
 
+    async def latest_archived(self, source: str, entity_ref: str):
+        """The most recently archived payload for (source, entity_ref).
+
+        For a caller whose ScrapeResult came back `skipped_unchanged=True`
+        (so `.rows` is empty) but still needs the actual data — see
+        jobs/stats_sync.py, which must parse something even on a run where
+        nothing new was fetched.
+        """
+        return await self._raw.latest(source, entity_ref)
+
     async def _run(
         self, source: str, job: str, leagues: list[str], seasons: list[str]
     ) -> ScrapeResult:

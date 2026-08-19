@@ -59,6 +59,31 @@ class RawStore:
         )
         return digest
 
+    async def latest(self, source: str, entity_ref: str) -> Any | None:
+        """The most recently archived payload for (source, entity_ref).
+
+        For a parser that needs to run every time a scrape job runs, not just
+        when new data was fetched: REQ-SCRAPE-3 skips re-parsing on an
+        unchanged fetch to save the work of re-processing identical data, but
+        "identical to last time" and "already parsed into its destination
+        table" are different facts. A caller whose destination table might
+        still be empty (a first-ever run, or one that failed after the fetch
+        but before the write) uses this to parse the archived copy instead of
+        needing a fresh network call.
+        """
+        raw = await self._db.fetchval(
+            """
+            select raw_response from data_provenance
+             where source = $1 and entity_ref = $2 and raw_response is not null
+             order by fetched_at desc limit 1
+            """,
+            source,
+            entity_ref,
+        )
+        if raw is None:
+            return None
+        return json.loads(raw) if isinstance(raw, str) else raw
+
     async def unchanged_since_last(
         self, source: str, entity_ref: str, digest: str
     ) -> bool:

@@ -5,12 +5,13 @@ from __future__ import annotations
 import logging
 
 from ..scrape.soccerdata_jobs import SoccerDataScraper
+from . import stats_sync
 from ._runtime import JobContext, run_job
 
 log = logging.getLogger("gamesenze.scrape")
 
-LEAGUES = ["ENG-Premier League", "ESP-La Liga", "ITA-Serie A"]
-SEASONS = ["2526"]
+LEAGUES = list(stats_sync.LEAGUE_NAMES.keys())
+SEASONS = stats_sync.SEASONS
 
 
 async def main(ctx: JobContext) -> int:
@@ -29,6 +30,20 @@ async def main(ctx: JobContext) -> int:
                 log.info("%s unchanged since last week (REQ-SCRAPE-3)", name)
             else:
                 log.info("%s: %d rows", name, len(result.rows))
+
+            # FBref has no team_match_stats parser yet — a live check found
+            # its `team` column coming back empty for every row, a bug in
+            # soccerdata's FBref reader. See jobs/stats_sync.py's module
+            # docstring.
+            if name == "understat":
+                written, unresolved = await stats_sync.sync_from_scrape_result(
+                    ctx, scraper, result, leagues=LEAGUES, seasons=SEASONS
+                )
+                log.info(
+                    "team_match_stats: %d row(s) written, %d side(s) unresolved",
+                    written,
+                    unresolved,
+                )
         except Exception as exc:  # noqa: BLE001
             # §8: a scrape failure falls back to cached data with its age shown
             # in the UI. It does not stop the other source from running.
