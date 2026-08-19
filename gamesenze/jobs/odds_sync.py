@@ -26,6 +26,7 @@ it), not a rewrite.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 
@@ -110,16 +111,25 @@ async def main(ctx: JobContext) -> int:
     snap_window_labels: list[str] = []
     snap_is_closing: list[bool] = []
 
-    matched = unmatched = rejected = 0
-    for comp in competitions:
+    # One HTTP call per league, ~20-30s each for a big payload (many games x
+    # many bookmakers). Nothing here needs to be sequential — each league is
+    # an independent vendor call, and budget.reserve() is a single atomic
+    # upsert safe under concurrency (see budget.py) — so fetch them all at
+    # once instead of paying that latency eight times in a row.
+    async def _fetch(comp):
         sport_key = LEAGUE_KEYS[comp["name"]]
         try:
             response = await client.odds(sport_key)
         except ProviderError as exc:
             log.error("odds_api %s: %s", sport_key, exc)
-            continue
-
+            return comp, []
         games = response.body if isinstance(response.body, list) else []
+        return comp, games
+
+    fetched = await asyncio.gather(*(_fetch(comp) for comp in competitions))
+
+    matched = unmatched = rejected = 0
+    for comp, games in fetched:
         for game in games:
             home_id = await resolver.try_resolve("odds_api", game.get("home_team", ""))
             away_id = await resolver.try_resolve("odds_api", game.get("away_team", ""))
