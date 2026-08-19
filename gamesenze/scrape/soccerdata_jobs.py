@@ -10,6 +10,7 @@ no exception anyone was watching.
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -112,9 +113,32 @@ def _reader_for(sd: Any, source: str, leagues: list[str], seasons: list[str]) ->
 
 
 def _frame_to_records(frame: Any) -> list[dict[str, Any]]:
-    """DataFrame -> plain records, so nothing downstream needs pandas."""
+    """DataFrame -> plain records, so nothing downstream needs pandas.
+
+    A missing FBref/Understat cell (a stat not recorded for that match) comes
+    through pandas as float('nan'). json.dumps() serializes that as a bare
+    `NaN` token — valid Python, not valid JSON (RFC 8259) — and Postgres's
+    json column correctly rejects it on insert (seen live, mid deployment:
+    "invalid input syntax for type json ... Token 'NaN' is invalid" after a
+    ~20 minute real scrape, which is what made this worth fixing rather than
+    just re-running). None is the correct JSON spelling of the same "not
+    recorded" fact, so this replaces NaN/±inf with None before anything gets
+    serialized — nothing is lost, just spelled correctly.
+    """
     if hasattr(frame, "reset_index"):
         frame = frame.reset_index()
     if hasattr(frame, "to_dict"):
-        return frame.to_dict(orient="records")
-    return list(frame)
+        records = frame.to_dict(orient="records")
+    else:
+        records = list(frame)
+    return [_json_safe(r) for r in records]
+
+
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return None
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    return value
