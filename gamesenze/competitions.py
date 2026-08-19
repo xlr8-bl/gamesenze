@@ -45,7 +45,10 @@ COMPETITIONS: tuple[CompetitionSpec, ...] = (
     CompetitionSpec("uecl", "UEFA Europa Conference League", "World"),
     # --- Major domestic cups (knockout — no standings table) -----------------
     CompetitionSpec("fa_cup", "FA Cup", "England", needs_standings=False),
-    CompetitionSpec("efl_cup", "EFL Cup", "England", needs_standings=False),
+    # API-Football has no entry named "EFL Cup" — "League Cup" is the name
+    # that search actually matches. Confirmed live like every other entry
+    # here, not assumed; this is only a better search term, not a guessed ID.
+    CompetitionSpec("efl_cup", "League Cup", "England", needs_standings=False),
     CompetitionSpec("copa_del_rey", "Copa del Rey", "Spain", needs_standings=False),
     CompetitionSpec("coppa_italia", "Coppa Italia", "Italy", needs_standings=False),
     CompetitionSpec("dfb_pokal", "DFB Pokal", "Germany", needs_standings=False),
