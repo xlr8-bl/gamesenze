@@ -63,22 +63,46 @@ async def main(ctx: JobContext) -> int:
         """
     )
 
+    # The LATERAL join above returns up to 20 odds rows per fixture — one per
+    # (bookmaker, market, selection), not one per fixture — so the same
+    # fixture appears once per row. Grouping first means get_features_as_of()
+    # runs once per fixture instead of once per odds row (seen live: the same
+    # fixture logged "sample below minimum" 20 times in a row), and it closes
+    # a latent correctness gap the redundancy was masking — nothing stopped
+    # a second qualifying bookmaker row for the same fixture from drafting a
+    # second pick. One fixture now yields at most one pick: whichever
+    # qualifying row has the best edge.
+    by_fixture: dict[str, list] = {}
     for row in candidates:
-        as_of = row["kickoff_at"]
-        home = await get_features_as_of(ctx.db, str(row["home_team_id"]), as_of)
-        away = await get_features_as_of(ctx.db, str(row["away_team_id"]), as_of)
+        by_fixture.setdefault(str(row["id"]), []).append(row)
+
+    for fixture_id, rows in by_fixture.items():
+        first = rows[0]
+        as_of = first["kickoff_at"]
+        home = await get_features_as_of(ctx.db, str(first["home_team_id"]), as_of)
+        away = await get_features_as_of(ctx.db, str(first["away_team_id"]), as_of)
         if home is None or away is None:
-            log.info("fixture %s: sample below the §5.4 minimum, skipping", row["id"])
+            log.info("fixture %s: sample below the §5.4 minimum, skipping", fixture_id)
             continue
 
         prices = model.price(home, away)
-        our_prob = prices.probability(row["market"], row["selection"])
-        if our_prob is None:
-            continue
 
-        our_edge = edge(our_prob, float(row["decimal_odds"]))
-        if our_edge < EDGE_THRESHOLD:
+        best_row = None
+        best_prob = None
+        best_edge_value = None
+        for row in rows:
+            our_prob = prices.probability(row["market"], row["selection"])
+            if our_prob is None:
+                continue
+            our_edge = edge(our_prob, float(row["decimal_odds"]))
+            if our_edge < EDGE_THRESHOLD:
+                continue
+            if best_edge_value is None or our_edge > best_edge_value:
+                best_row, best_prob, best_edge_value = row, our_prob, our_edge
+
+        if best_row is None:
             continue
+        row, our_prob = best_row, best_prob
 
         decision = await coverage.can_cover(row["sport"], policy=policy)
         if not decision.admitted:
