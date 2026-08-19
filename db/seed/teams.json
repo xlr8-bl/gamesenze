@@ -57,7 +57,8 @@
       "variants": [
         "Brighton",
         "Brighton and Hove Albion",
-        "Brighton Hove Albion"
+        "Brighton Hove Albion",
+        "Brighton & Hove Albion FC"
       ]
     },
     {
@@ -92,7 +93,8 @@
       "canonical": "Ipswich Town",
       "country": "England",
       "variants": [
-        "Ipswich"
+        "Ipswich",
+        "Ipswich Town FC"
       ]
     },
     {
@@ -132,7 +134,8 @@
       "country": "England",
       "variants": [
         "Newcastle",
-        "Newcastle Utd"
+        "Newcastle Utd",
+        "Newcastle United FC"
       ]
     },
     {
@@ -141,7 +144,8 @@
       "variants": [
         "Nott'ham Forest",
         "Notts Forest",
-        "Nottm Forest"
+        "Nottm Forest",
+        "Nottingham Forest FC"
       ]
     },
     {
@@ -156,14 +160,16 @@
       "country": "England",
       "variants": [
         "Tottenham",
-        "Spurs"
+        "Spurs",
+        "Tottenham Hotspur FC"
       ]
     },
     {
       "canonical": "West Ham United",
       "country": "England",
       "variants": [
-        "West Ham"
+        "West Ham",
+        "West Ham United FC"
       ]
     },
     {
@@ -171,7 +177,8 @@
       "country": "England",
       "variants": [
         "Wolves",
-        "Wolverhampton"
+        "Wolverhampton",
+        "Wolverhampton Wanderers FC"
       ]
     },
     {
@@ -189,7 +196,8 @@
         "Atletico Madrid",
         "Atlético de Madrid",
         "Atl. Madrid",
-        "Club Atletico de Madrid"
+        "Club Atletico de Madrid",
+        "Club Atlético de Madrid"
       ]
     },
     {
@@ -206,7 +214,8 @@
       "country": "Spain",
       "variants": [
         "Celta de Vigo",
-        "RC Celta"
+        "RC Celta",
+        "RC Celta de Vigo"
       ]
     },
     {
@@ -250,7 +259,8 @@
       "canonical": "Rayo Vallecano",
       "country": "Spain",
       "variants": [
-        "Rayo"
+        "Rayo",
+        "Rayo Vallecano de Madrid"
       ]
     },
     {
@@ -258,7 +268,8 @@
       "country": "Spain",
       "variants": [
         "Betis",
-        "Real Betis Balompie"
+        "Real Betis Balompie",
+        "Real Betis Balompié"
       ]
     },
     {
@@ -273,7 +284,8 @@
       "country": "Spain",
       "variants": [
         "Sociedad",
-        "Real Sociedad de Futbol"
+        "Real Sociedad de Futbol",
+        "Real Sociedad de Fútbol"
       ]
     },
     {
@@ -309,7 +321,8 @@
       "canonical": "Bologna",
       "country": "Italy",
       "variants": [
-        "Bologna FC"
+        "Bologna FC",
+        "Bologna FC 1909"
       ]
     },
     {
@@ -361,7 +374,8 @@
       "variants": [
         "Inter",
         "Inter Milan",
-        "FC Internazionale"
+        "FC Internazionale",
+        "FC Internazionale Milano"
       ]
     },
     {
@@ -405,7 +419,8 @@
       "canonical": "Parma",
       "country": "Italy",
       "variants": [
-        "Parma Calcio"
+        "Parma Calcio",
+        "Parma Calcio 1913"
       ]
     },
     {
@@ -966,6 +981,34 @@
       "country": "Spain",
       "variants": [
         "Elche CF"
+      ]
+    },
+    {
+      "canonical": "Monza",
+      "country": "Italy",
+      "variants": [
+        "AC Monza"
+      ]
+    },
+    {
+      "canonical": "Frosinone",
+      "country": "Italy",
+      "variants": [
+        "Frosinone Calcio"
+      ]
+    },
+    {
+      "canonical": "Venezia",
+      "country": "Italy",
+      "variants": [
+        "Venezia FC"
+      ]
+    },
+    {
+      "canonical": "Sassuolo",
+      "country": "Italy",
+      "variants": [
+        "US Sassuolo Calcio"
       ]
     }
   ],
