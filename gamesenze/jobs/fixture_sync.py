@@ -121,7 +121,23 @@ async def main(ctx: JobContext) -> int:
             log.error("fixture sync failed for %s: %s", comp["name"], exc)
             continue
 
-        for raw in (response.body or {}).get("response", []):
+        # §8: failure must never be silent. API-Football returns HTTP 200
+        # even when it is reporting a problem (bad season, quota, an unknown
+        # parameter combination) — the error lives in the body, not the
+        # status code, and a 0-fixture result looks identical to a healthy
+        # empty week unless this is checked explicitly.
+        errors = (response.body or {}).get("errors")
+        if errors:
+            log.warning("%s (league=%s season=%s): API reported %s",
+                        comp["name"], comp["source_id"], comp["resolved_season"],
+                        errors)
+
+        body_fixtures = (response.body or {}).get("response", [])
+        if not body_fixtures and not errors:
+            log.info("%s: 0 fixtures in this window (no API error reported)",
+                      comp["name"])
+
+        for raw in body_fixtures:
             parsed = parse_fixture(raw)
             fixture_id = await upsert_fixture(
                 ctx, resolver, comp["competition_id"], parsed

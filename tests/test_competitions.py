@@ -305,3 +305,54 @@ async def test_dump_writes_nothing():
     await dump(ctx, FakeClient())
 
     assert not db.wrote("insert into")
+
+
+# --- surfacing vendor errors (§8: failure must never be silent) -----------
+
+async def test_a_vendor_error_is_logged_not_swallowed(caplog):
+    import logging
+
+    from gamesenze.jobs.fixture_sync import main as fixture_sync_main
+
+    class FakeResponse:
+        body = {"errors": {"season": "requested season is not available"},
+                "response": []}
+
+    class FakeClient:
+        async def fixtures(self, league_id, season):
+            return FakeResponse()
+
+    db = FakeDb(
+        {
+            "select c.id as competition_id": [
+                {
+                    "competition_id": "comp-uuid",
+                    "name": "Premier League",
+                    "needs_standings": True,
+                    "source_id": "39",
+                    "resolved_season": 2026,
+                }
+            ]
+        }
+    )
+    ctx = type(
+        "Ctx",
+        (),
+        {
+            "db": db,
+            "settings": type("S", (), {"api_football_key": "x"})(),
+            "meter": None,
+            "clock": None,
+        },
+    )()
+
+    import gamesenze.jobs.fixture_sync as mod
+    original = mod.ApiFootball
+    mod.ApiFootball = lambda *a, **k: FakeClient()
+    try:
+        with caplog.at_level(logging.WARNING):
+            await fixture_sync_main(ctx)
+    finally:
+        mod.ApiFootball = original
+
+    assert any("API reported" in r.message for r in caplog.records)
