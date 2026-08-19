@@ -457,7 +457,8 @@
       "country": "France",
       "variants": [
         "Paris Saint-Germain FC",
-        "PSG"
+        "PSG",
+        "Paris Saint Germain"
       ]
     },
     {
@@ -586,7 +587,8 @@
       "canonical": "Cambuur",
       "country": "Netherlands",
       "variants": [
-        "SC Cambuur-Leeuwarden"
+        "SC Cambuur-Leeuwarden",
+        "SC Cambuur"
       ]
     },
     {
@@ -616,7 +618,9 @@
     {
       "canonical": "PEC Zwolle",
       "country": "Netherlands",
-      "variants": []
+      "variants": [
+        "FC Zwolle"
+      ]
     },
     {
       "canonical": "Heerenveen",
@@ -759,7 +763,8 @@
       "canonical": "Marítimo",
       "country": "Portugal",
       "variants": [
-        "CS Marítimo"
+        "CS Marítimo",
+        "CS Maritimo"
       ]
     },
     {
@@ -936,7 +941,8 @@
       "canonical": "Leeds United",
       "country": "England",
       "variants": [
-        "Leeds United FC"
+        "Leeds United FC",
+        "Leeds"
       ]
     },
     {
@@ -973,7 +979,9 @@
       "canonical": "Deportivo Alavés",
       "country": "Spain",
       "variants": [
-        "Deportivo Alaves"
+        "Deportivo Alaves",
+        "Alavés",
+        "Alaves"
       ]
     },
     {
@@ -1009,6 +1017,156 @@
       "country": "Italy",
       "variants": [
         "US Sassuolo Calcio"
+      ]
+    },
+    {
+      "canonical": "Cremonese",
+      "country": "Italy",
+      "variants": []
+    },
+    {
+      "canonical": "Pisa",
+      "country": "Italy",
+      "variants": []
+    },
+    {
+      "canonical": "Real Oviedo",
+      "country": "Spain",
+      "variants": []
+    },
+    {
+      "canonical": "Benfica",
+      "country": "Portugal",
+      "variants": [
+        "SL Benfica"
+      ]
+    },
+    {
+      "canonical": "Moreirense",
+      "country": "Portugal",
+      "variants": [
+        "Moreirense FC"
+      ]
+    },
+    {
+      "canonical": "Bayern Munich",
+      "country": "Germany",
+      "variants": []
+    },
+    {
+      "canonical": "VfB Stuttgart",
+      "country": "Germany",
+      "variants": []
+    },
+    {
+      "canonical": "1. FC Köln",
+      "country": "Germany",
+      "variants": [
+        "1. FC Koln",
+        "FC Koln",
+        "FC Köln"
+      ]
+    },
+    {
+      "canonical": "TSG Hoffenheim",
+      "country": "Germany",
+      "variants": [
+        "Hoffenheim"
+      ]
+    },
+    {
+      "canonical": "Elversberg",
+      "country": "Germany",
+      "variants": [
+        "SV Elversberg"
+      ]
+    },
+    {
+      "canonical": "Bayer Leverkusen",
+      "country": "Germany",
+      "variants": [
+        "Leverkusen"
+      ]
+    },
+    {
+      "canonical": "RB Leipzig",
+      "country": "Germany",
+      "variants": []
+    },
+    {
+      "canonical": "Borussia Monchengladbach",
+      "country": "Germany",
+      "variants": [
+        "Borussia Mönchengladbach",
+        "Monchengladbach"
+      ]
+    },
+    {
+      "canonical": "Union Berlin",
+      "country": "Germany",
+      "variants": [
+        "1. FC Union Berlin"
+      ]
+    },
+    {
+      "canonical": "Eintracht Frankfurt",
+      "country": "Germany",
+      "variants": []
+    },
+    {
+      "canonical": "FSV Mainz 05",
+      "country": "Germany",
+      "variants": [
+        "Mainz 05",
+        "Mainz"
+      ]
+    },
+    {
+      "canonical": "SC Paderborn",
+      "country": "Germany",
+      "variants": [
+        "Paderborn"
+      ]
+    },
+    {
+      "canonical": "Borussia Dortmund",
+      "country": "Germany",
+      "variants": [
+        "Dortmund"
+      ]
+    },
+    {
+      "canonical": "Hamburger SV",
+      "country": "Germany",
+      "variants": [
+        "Hamburg"
+      ]
+    },
+    {
+      "canonical": "SC Freiburg",
+      "country": "Germany",
+      "variants": [
+        "Freiburg"
+      ]
+    },
+    {
+      "canonical": "Werder Bremen",
+      "country": "Germany",
+      "variants": []
+    },
+    {
+      "canonical": "Augsburg",
+      "country": "Germany",
+      "variants": [
+        "FC Augsburg"
+      ]
+    },
+    {
+      "canonical": "FC Schalke 04",
+      "country": "Germany",
+      "variants": [
+        "Schalke 04",
+        "Schalke"
       ]
     }
   ],
