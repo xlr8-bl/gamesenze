@@ -84,43 +84,56 @@ Free tier is 100 requests/day, which is what §3.2 budgets against.
 
 ---
 
-## 3. SportsGameOdds — 1 value
+## 3. The Odds API — 1 value
 
-`SPORTSGAMEODDS_KEY`
+`ODDS_API_KEY`
 
-**The key is emailed to you. There is no dashboard showing it**, which is the
-usual reason people think signup failed.
+This is the live odds source. SportsGameOdds (below) was the original plan,
+but its free "Amateur" tier turned out — discovered live mid deployment, by
+actually calling `/v2/leagues`, not from its marketing page — to cover only
+MLS and the UEFA Champions League for soccer. None of the top-5 European
+leagues this product targets are on it below the $299/month "Pro" tier. The
+Odds API's free tier covers all five, plus Eredivisie, Primeira Liga and the
+Championship — also confirmed live, against `/v4/sports`, before it was
+trusted.
 
-1. Go to **sportsgameodds.com/pricing**.
-2. Choose the **Amateur** plan — their word for it is "eternally free".
-3. Complete checkout. **It asks for a card**, and states it is never charged
-   unless you later choose to upgrade. If that is a blocker, see the note below.
-4. **Watch your inbox.** The key arrives by email within a couple of minutes.
-5. Nothing after a few minutes: check spam, then mail
-   **support@sportsgameodds.com**.
+1. Go to **the-odds-api.com**, use "Get access" / the free plan signup.
+2. No card required for the free tier. The key shows on your dashboard.
 
-Free "Amateur" tier, all of which this codebase is built around:
+Free tier, verified live (see `gamesenze/providers/odds_api.py`):
 
 | Limit | Value | Where it shows up |
 |---|---|---|
-| Objects/month | 2,500 | §3.3 plans 2,000, leaving a 500 reserve |
-| Requests/minute | 10 | Split 6 (Worker) / 3 (fallback) in `config.py` |
-| Update frequency | 10 min | Our tightest cadence is 15 min, so we never outpace it |
-| Coverage | 8 leagues, 9 bookmakers | Decide your 8 leagues before seeding aliases |
+| Credits/month | 500 | §3.3-equivalent plans 400, leaving a 100 reserve |
+| Cost per call | markets × regions | Pinned to 1×1 = 1 credit; see the client for why |
+| Coverage | EPL, La Liga, Serie A, Bundesliga, Ligue 1, Eredivisie, Primeira Liga, Championship | No UCL, UEL, UECL, or domestic cups — fixture-only for those |
 
-The 10-minute update frequency is worth understanding: on the free plan a price
-you fetch may be up to 10 minutes stale at source. Our closest-to-kickoff
-window polls every 15 minutes, so we are never asking faster than they refresh
-— fetching more often would spend objects to receive the same numbers back.
+One credit returns an entire league's board — every upcoming game, not one —
+which is why `odds_sync.py` polls per-league rather than per-fixture. It runs
+once a day as a step in `nightly-analysis.yml`, before drafting, at 8 credits
+(one per covered league). Increasing that frequency later is a config change
+(`PROVIDER_BUDGETS["odds_api"]` in `config.py`), not a rewrite — the reserve
+is sized to allow it.
 
-**If you would rather not enter a card**, the pipeline runs without this key —
+**If you would rather not sign up yet**, the pipeline runs without this key —
 you simply get no odds, which means no publishable picks (the gate requires
 `odds_fresh`). Everything else works: fixtures, stats, scrapes, the QA layers
 and the audit. That is a reasonable way to validate the plumbing first and add
 odds when you are ready.
 
-Authentication is the `X-Api-Key` header, which is what
-`gamesenze/providers/sgo.py` sends.
+Authentication is the `apiKey` query parameter, not a header — confirmed
+against the vendor's own reference docs and a live call before either was
+trusted.
+
+### SportsGameOdds — kept registered, not currently used
+
+`SPORTSGAMEODDS_KEY` is still wired through config and the Cloudflare Worker
+from the original plan, but nothing calls it for live odds any more — its
+free tier cannot serve any of this product's target leagues (see above). It
+is harmless to leave the secret set (`due_odds_snapshots()` never finds
+anything to poll, so the Worker's odds half stays a permanent no-op), and it
+would become useful again only if you later upgrade to a paid SportsGameOdds
+tier. Not required for setup.
 
 ## 4. Scraper contact — 1 value
 
@@ -254,12 +267,13 @@ npx wrangler secret list
 ### GitHub Actions secrets
 
 Repo → **Settings → Secrets and variables → Actions → New repository secret**.
-Ten in total:
+Twelve in total:
 
 ```
 DATABASE_URL                 SUPABASE_URL
 SUPABASE_ANON_KEY            SUPABASE_SERVICE_ROLE_KEY
 API_FOOTBALL_KEY             SPORTSGAMEODDS_KEY
+FOOTBALL_DATA_KEY            ODDS_API_KEY
 NETLIFY_AUTH_TOKEN           NETLIFY_SITE_ID
 SCRAPER_CONTACT              ALERT_WEBHOOK_URL
 ```
@@ -290,8 +304,8 @@ cp .env.example .env
 ```
 
 Fill in `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-`API_FOOTBALL_KEY`, `SPORTSGAMEODDS_KEY`, `SCRAPER_CONTACT`. `.env` is
-gitignored; keep it that way.
+`API_FOOTBALL_KEY`, `FOOTBALL_DATA_KEY`, `ODDS_API_KEY`, `SPORTSGAMEODDS_KEY`,
+`SCRAPER_CONTACT`. `.env` is gitignored; keep it that way.
 
 Every job entry point loads it automatically (`gamesenze/config.py`), so
 `DATABASE_URL` in `.env` is picked up the moment you run `python -m
@@ -314,10 +328,9 @@ curl -s -D - -o /dev/null \
   -H "x-apisports-key: $API_FOOTBALL_KEY" \
   "https://v3.football.api-sports.io/status" | grep -i "x-ratelimit\|HTTP/"
 
-# 3. SportsGameOdds key valid
+# 3. The Odds API key valid — GET /v4/sports is free, does not spend a credit
 curl -s -o /dev/null -w "%{http_code}\n" \
-  -H "X-Api-Key: $SPORTSGAMEODDS_KEY" \
-  "https://api.sportsgameodds.com/v2/sports"
+  "https://api.the-odds-api.com/v4/sports/?apiKey=$ODDS_API_KEY"
 
 # 4. Alert webhook reaches you
 curl -s -X POST -H "Content-Type: application/json" \

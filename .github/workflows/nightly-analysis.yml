@@ -30,6 +30,19 @@ jobs:
           FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
         run: python -m gamesenze.jobs.fixture_sync
 
+      # SportsGameOdds's free tier only covers MLS and the Champions League
+      # for soccer — found live, not documented anywhere — so it cannot
+      # serve odds for any of the leagues this product targets. The Odds
+      # API replaces it: see gamesenze/providers/odds_api.py and
+      # gamesenze/jobs/odds_sync.py for the full story. Runs before
+      # nightly_analysis because that job only drafts a pick for a fixture
+      # that already has an odds snapshot.
+      - name: Sync odds for covered leagues
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python -m gamesenze.jobs.odds_sync
+
       - name: Compute features, draft picks
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

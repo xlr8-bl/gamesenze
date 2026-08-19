@@ -1,0 +1,167 @@
+"""Populate `odds_snapshots` from The Odds API — §3.5, runs before analysis.
+
+This is the piece that closed the last gap in the pipeline: nightly_analysis
+only drafts a pick for a fixture that already has an odds snapshot, and
+nothing wrote the first one. The `fixtures.covered` flag looked like the
+missing link, but it is set by nightly_analysis itself *after* a fixture is
+priced — a fixture could never become covered, so nothing could ever poll it,
+so nothing could ever be priced. Circular, and only visible once the whole
+pipeline ran live end to end.
+
+The Odds API sidesteps that: one call returns an entire league's board (see
+providers/odds_api.py for why that made it the better vendor here), so there
+is no per-fixture admission step to gate on. Every scheduled, resolved
+fixture in a covered league gets matched against that board by team names —
+already resolved through the same alias table as everything else, so a name
+this vendor sends that we do not recognise blocks that one match rather than
+being guessed (REQ-DATA-NORM-1) — and by proximity of kickoff time.
+
+Runs once/day (8 credits — one per covered league) as a step before
+nightly_analysis. That means every snapshot in the current setup carries the
+same window_label; there is no separate closing-line pass yet. Tracked as a
+follow-up, not silently pretended away — see docs/OPERATIONS.md. Increasing
+the frequency later is a config change (ODDS_API budget has headroom for
+it), not a rewrite.
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import timedelta
+
+from ..normalize import TeamResolver
+from ..providers.base import ProviderError
+from ..providers.odds_api import LEAGUE_KEYS, OddsApi, parse_odds
+from ._runtime import JobContext, run_job
+
+log = logging.getLogger("gamesenze.odds_sync")
+
+# How far a vendor's commence_time may drift from our stored kickoff_at and
+# still count as the same fixture. Generous on purpose: this is matching two
+# independent vendors' clocks, not the same source twice.
+KICKOFF_TOLERANCE = timedelta(hours=6)
+
+
+async def covered_competitions(ctx: JobContext) -> list[dict]:
+    """Resolved-and-synced competitions this vendor actually has a board for."""
+    rows = await ctx.db.fetch(
+        """
+        select c.id as competition_id, c.name
+          from competitions c
+          join competition_source_ids s
+            on s.competition_id = c.id and s.source = 'football_data'
+        """
+    )
+    return [r for r in rows if r["name"] in LEAGUE_KEYS]
+
+
+async def match_fixture(
+    ctx: JobContext, competition_id: str, home_id: str, away_id: str, commence_at
+) -> str | None:
+    return await ctx.db.fetchval(
+        """
+        select id from fixtures
+         where competition_id = $1
+           and home_team_id = $2
+           and away_team_id = $3
+           and status = 'scheduled'
+           and kickoff_at between $4 and $5
+         order by abs(extract(epoch from (kickoff_at - $6)))
+         limit 1
+        """,
+        competition_id,
+        home_id,
+        away_id,
+        commence_at - KICKOFF_TOLERANCE,
+        commence_at + KICKOFF_TOLERANCE,
+        commence_at,
+    )
+
+
+async def main(ctx: JobContext) -> int:
+    if not ctx.settings.odds_api_key:
+        log.warning("ODDS_API_KEY not set; skipping odds_sync")
+        return 0
+
+    resolver = TeamResolver(ctx.db, ctx.clock)
+    client = OddsApi(
+        ctx.settings.odds_api_key, db=ctx.db, meter=ctx.meter, clock=ctx.clock
+    )
+
+    competitions = await covered_competitions(ctx)
+    if not competitions:
+        log.warning(
+            "no odds_api-covered competition is resolved against "
+            "football_data yet — run fixture_sync first"
+        )
+        return 0
+
+    matched = unmatched = rejected = 0
+    for comp in competitions:
+        sport_key = LEAGUE_KEYS[comp["name"]]
+        try:
+            response = await client.odds(sport_key)
+        except ProviderError as exc:
+            log.error("odds_api %s: %s", sport_key, exc)
+            continue
+
+        games = response.body if isinstance(response.body, list) else []
+        for game in games:
+            home_id = await resolver.try_resolve("odds_api", game.get("home_team", ""))
+            away_id = await resolver.try_resolve("odds_api", game.get("away_team", ""))
+            if home_id is None or away_id is None:
+                unmatched += 1
+                continue
+
+            commence_at = _parse_commence(game.get("commence_time"))
+            fixture_id = await match_fixture(
+                ctx, comp["competition_id"], home_id, away_id, commence_at
+            )
+            if fixture_id is None:
+                unmatched += 1
+                continue
+
+            rows, rejections = parse_odds(
+                game, captured_at=ctx.clock.now(), window_label="daily"
+            )
+            rejected += len(rejections)
+            for r in rejections:
+                log.warning("fixture %s: rejected odds row: %s", fixture_id, r)
+
+            for row in rows:
+                await ctx.db.execute(
+                    """
+                    insert into odds_snapshots (fixture_id, captured_at, bookmaker,
+                                                market, selection, decimal_odds,
+                                                window_label, is_closing)
+                    values ($1, $2, $3, $4, $5, $6, $7, $8)
+                    """,
+                    fixture_id,
+                    row["captured_at"],
+                    row["bookmaker"],
+                    row["market"],
+                    row["selection"],
+                    row["decimal_odds"],
+                    row["window_label"],
+                    row["is_closing"],
+                )
+            if rows:
+                matched += 1
+
+    print(
+        f"odds captured for {matched} fixture(s), {unmatched} game(s) not "
+        f"matched to a fixture, {rejected} odds row(s) rejected by QA"
+    )
+    return 0
+
+
+def _parse_commence(value: str | None):
+    from datetime import datetime
+
+    if not value:
+        raise ValueError("odds_api game missing commence_time")
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+if __name__ == "__main__":
+    run_job(main)

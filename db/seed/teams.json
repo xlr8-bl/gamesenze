@@ -1019,6 +1019,7 @@
     "sofifa",
     "sportsgameodds",
     "transfermarkt",
-    "football_data"
+    "football_data",
+    "odds_api"
   ]
 }

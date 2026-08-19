@@ -34,6 +34,10 @@ class ProviderBudget:
 
 PROVIDER_BUDGETS: dict[str, ProviderBudget] = {
     "api_football": ProviderBudget("api_football", 100, "day", 80),
+    # Kept registered even though nothing calls it live any more (see
+    # odds_api below): its free tier only covers MLS and the UEFA Champions
+    # League for soccer, discovered live mid deployment, which does not
+    # reach any of the leagues this product targets.
     "sportsgameodds": ProviderBudget("sportsgameodds", 2500, "month", 2000),
     # Open-Meteo is unlimited but still metered, so the audit can show what we
     # actually leaned on.
@@ -44,6 +48,12 @@ PROVIDER_BUDGETS: dict[str, ProviderBudget] = {
     # a daily ceiling still gives the existing degradation ladder something
     # to key off, set well above what 9 competitions synced once a day costs.
     "football_data": ProviderBudget("football_data", 500, "day", 100),
+    # the-odds-api.com — replaces SportsGameOdds for live odds (§ see
+    # providers/odds_api.py for why). One credit = one league's whole board,
+    # so this is a monthly, not daily, ceiling. Reserve is generous because
+    # odds_sync currently polls once/day (8 credits); the headroom is for
+    # increasing that frequency later without a config change.
+    "odds_api": ProviderBudget("odds_api", 500, "month", 400),
 }
 
 
@@ -130,6 +140,7 @@ class Settings:
     api_football_key: str = ""
     sportsgameodds_key: str = ""
     football_data_key: str = ""
+    odds_api_key: str = ""
     scraper_contact: str = ""
     alert_webhook_url: str = ""
     gh_dispatch_token: str = ""
@@ -147,6 +158,7 @@ class Settings:
             api_football_key=e.get("API_FOOTBALL_KEY", ""),
             sportsgameodds_key=e.get("SPORTSGAMEODDS_KEY", ""),
             football_data_key=e.get("FOOTBALL_DATA_KEY", ""),
+            odds_api_key=e.get("ODDS_API_KEY", ""),
             scraper_contact=e.get("SCRAPER_CONTACT", ""),
             alert_webhook_url=e.get("ALERT_WEBHOOK_URL", ""),
             gh_dispatch_token=e.get("GH_DISPATCH_TOKEN", ""),

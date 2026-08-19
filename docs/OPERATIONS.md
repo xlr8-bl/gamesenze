@@ -4,11 +4,24 @@
 
 | When | What | Where |
 |---|---|---|
-| Continuous | Odds snapshots, T-1h lineups | Cloudflare Worker (per-minute cron) |
-| 04:00 UTC | Sync fixtures, then draft picks | `nightly-analysis.yml` |
+| Continuous | T-1h lineups | Cloudflare Worker (per-minute cron) |
+| 04:00 UTC | Sync fixtures, sync odds, then draft picks | `nightly-analysis.yml` |
 | Morning | **A person reads every draft** | `python -m gamesenze.jobs.review_queue` |
 | 07:30 UTC | Yesterday's audit | `daily-qa-audit.yml` |
-| Hourly :20 | Worker fallback catch-up | `worker-fallback.yml` |
+| Hourly :20 | Worker fallback catch-up (lineups only) | `worker-fallback.yml` |
+
+Odds snapshots are *not* on the Worker's per-minute cron, despite the original
+plan. SportsGameOdds — the vendor that plan assumed — turned out, discovered
+live, to cover only MLS and the Champions League on its free tier; none of
+this product's target leagues. The Odds API replaced it, and its billing
+model (one credit per league's whole board, not per fixture) made a once-daily
+pull ahead of `nightly_analysis` the practical cadence rather than a per-minute
+one — see `gamesenze/providers/odds_api.py` and `gamesenze/jobs/odds_sync.py`.
+One consequence worth knowing: every odds snapshot currently carries the same
+`window_label` ("daily"), so there is no true closing-line capture yet
+(REQ-QA-5 wants one as close to kickoff as practical). Tracked as a follow-up,
+not silently skipped — increasing `odds_sync` frequency is a budget config
+change (`PROVIDER_BUDGETS["odds_api"]` in `config.py`), not a rewrite.
 
 Actions timing drifts by 10-30 minutes. That is expected and harmless here —
 nothing on Actions is time-critical.
