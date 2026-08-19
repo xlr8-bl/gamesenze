@@ -94,6 +94,41 @@ requires_pg = pytest.mark.skipif(
 )
 
 
+class ConnDb:
+    """Adapts a single asyncpg connection to the `Db` protocol.
+
+    Lets a test run a real job's `main(ctx)` against the `pg` fixture's
+    rolled-back connection instead of the pooled `AsyncpgDb`, which needs a
+    pool rather than one connection.
+    """
+
+    def __init__(self, conn: Any) -> None:
+        self._conn = conn
+
+    async def execute(self, sql: str, *args: Any) -> str:
+        return await self._conn.execute(sql, *args)
+
+    async def fetch(self, sql: str, *args: Any) -> list[dict[str, Any]]:
+        rows = await self._conn.fetch(sql, *args)
+        return [dict(r) for r in rows]
+
+    async def fetchrow(self, sql: str, *args: Any) -> dict[str, Any] | None:
+        row = await self._conn.fetchrow(sql, *args)
+        return dict(row) if row is not None else None
+
+    async def fetchval(self, sql: str, *args: Any) -> Any:
+        return await self._conn.fetchval(sql, *args)
+
+
+@pytest.fixture
+async def job_ctx(pg):
+    """A `JobContext` wired to the real, rolled-back `pg` connection."""
+    from gamesenze.config import Settings
+    from gamesenze.jobs._runtime import JobContext
+
+    return JobContext(ConnDb(pg), Settings())
+
+
 @pytest.fixture
 async def pg():
     """A connection to a migrated test database, rolled back after each test."""
