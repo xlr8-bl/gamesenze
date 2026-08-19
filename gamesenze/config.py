@@ -38,6 +38,12 @@ PROVIDER_BUDGETS: dict[str, ProviderBudget] = {
     # Open-Meteo is unlimited but still metered, so the audit can show what we
     # actually leaned on.
     "open_meteo": ProviderBudget("open_meteo", 0, "day", 0),
+    # football-data.org's free tier: current-season fixtures for 9 of our 17
+    # competitions (api-football's free tier only reaches 2022-2024, useless
+    # for live picks). The real constraint is 10 req/min, not a daily count —
+    # a daily ceiling still gives the existing degradation ladder something
+    # to key off, set well above what 9 competitions synced once a day costs.
+    "football_data": ProviderBudget("football_data", 500, "day", 100),
 }
 
 
@@ -59,6 +65,7 @@ API_FOOTBALL_DAILY_ALLOCATION: dict[str, int] = {
 # a 429 costs us an object and returns nothing — the worst possible trade.
 RATE_LIMITS_PER_MINUTE: dict[str, int] = {
     "sportsgameodds": 10,   # free "Amateur" plan
+    "football_data": 10,    # free tier
 }
 
 
@@ -122,6 +129,7 @@ class Settings:
     database_url: str = ""
     api_football_key: str = ""
     sportsgameodds_key: str = ""
+    football_data_key: str = ""
     scraper_contact: str = ""
     alert_webhook_url: str = ""
     gh_dispatch_token: str = ""
@@ -138,6 +146,7 @@ class Settings:
             database_url=e.get("DATABASE_URL", ""),
             api_football_key=e.get("API_FOOTBALL_KEY", ""),
             sportsgameodds_key=e.get("SPORTSGAMEODDS_KEY", ""),
+            football_data_key=e.get("FOOTBALL_DATA_KEY", ""),
             scraper_contact=e.get("SCRAPER_CONTACT", ""),
             alert_webhook_url=e.get("ALERT_WEBHOOK_URL", ""),
             gh_dispatch_token=e.get("GH_DISPATCH_TOKEN", ""),

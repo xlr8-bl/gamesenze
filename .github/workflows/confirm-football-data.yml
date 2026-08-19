@@ -1,0 +1,27 @@
+name: Resolve football-data.org — 2. confirm codes
+
+# Takes codes read from the "show codes" run's log and writes them, but
+# re-checks each one against the vendor's own list first — a typo'd code is
+# rejected, not silently accepted.
+on:
+  workflow_dispatch:
+    inputs:
+      picks:
+        description: >-
+          Comma-separated key=code pairs from the "show codes" run's log,
+          e.g. premier_league=PL,la_liga=PD,serie_a=SA
+        required: true
+
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Verify and write the confirmed competition codes
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
+        run: python -m gamesenze.jobs.resolve_football_data --confirm "${{ inputs.picks }}"

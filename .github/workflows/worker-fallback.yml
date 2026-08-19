@@ -35,7 +35,8 @@ jobs:
 
       - name: Report what the Worker said
         if: inputs.errors != ''
-        run: echo "Worker tick '${{ inputs.cron }}' failed: ${{ inputs.errors }}"
+        run: |
+          echo "Worker tick '${{ inputs.cron }}' failed: ${{ inputs.errors }}"
 
       - name: Catch up missed captures
         env:

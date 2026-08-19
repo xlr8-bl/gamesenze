@@ -1,0 +1,24 @@
+name: Resolve football-data.org — 1. show codes
+
+# Phone-safe, read-only. football-data.org's free tier covers the current
+# season for 9 of our 17 competitions — the ones API-Football's free tier
+# cannot (that one only reaches 2022-2024, discovered live mid-deployment).
+# See gamesenze/jobs/resolve_football_data.py for why the whole list is
+# shown once rather than searched per competition, and docs/OPERATIONS.md
+# for the split between the two vendors.
+on:
+  workflow_dispatch:
+
+jobs:
+  dump-candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Show football-data.org's full competition list
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
+        run: python -m gamesenze.jobs.resolve_football_data --dump

@@ -17,10 +17,17 @@ jobs:
       # The step this file's name has always implied but never ran: nothing
       # else in the pipeline writes a fixture for the first time, everything
       # downstream reads one that already exists.
+      # fixture_sync no longer calls API-Football directly: its free tier
+      # cannot serve the current season ("Free plans do not have access to
+      # this season, try from 2022 to 2024" — found live, not documented
+      # anywhere). football-data.org's free tier covers 9 of our 17
+      # competitions for the current season instead; see
+      # docs/OPERATIONS.md for the split and gamesenze/jobs/fixture_sync.py
+      # for why API-Football stays wired for historical backtest data only.
       - name: Sync fixtures from resolved competitions
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
         run: python -m gamesenze.jobs.fixture_sync
 
       - name: Compute features, draft picks

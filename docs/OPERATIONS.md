@@ -149,6 +149,29 @@ Populates `fixtures` for every resolved competition. Unresolved team names
 block that one fixture (not the whole run) and land in the alias backlog —
 see `python -m gamesenze.jobs.aliases backlog` above.
 
+**Second vendor, found live:** API-Football's free tier only reaches
+2022-2024 ("Free plans do not have access to this season") — useless for
+live fixtures, though still fine for the historical data the backtest layer
+wants. football-data.org's free tier covers the current season for 9 of the
+17: Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League,
+Eredivisie, Primeira Liga, Championship. The other 8 (UEL, UECL, six domestic
+cups) have no free live source yet.
+
+Resolve football-data.org the same way, from a terminal:
+
+```bash
+python -m gamesenze.jobs.resolve_football_data
+```
+
+Shows the vendor's whole competition list once (it is small — a curated
+catalogue, not API-Football's thousands of amateur leagues) and asks for the
+short code (`PL`, `PD`, `SA`, ...) for each of the 9, typed and verified
+against that same list — a typo is rejected, not guessed at.
+
+Or from a phone: **"Resolve football-data.org — 1. show codes"** then
+**"... — 2. confirm codes"**, same two-step pattern as the API-Football
+workflows, with `key=code` pairs instead of `key=id`.
+
 **Known gap:** standings-derived stakes tags (`top_four_clash`,
 `relegation_battle`, `neighbours_in_table`, `dead_rubber_for_one_side`) are not
 computed yet — there is no `standings` table, so `nightly_analysis` currently

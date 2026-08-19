@@ -136,7 +136,8 @@ async def test_a_new_fixture_is_inserted_when_both_teams_resolve():
     resolver = TeamResolver(db)
 
     fixture_id = await upsert_fixture(
-        type("Ctx", (), {"db": db})(), resolver, "comp-uuid", _parsed()
+        type("Ctx", (), {"db": db})(), resolver, "api_football", "comp-uuid",
+        _parsed(),
     )
 
     assert fixture_id == "fixture-uuid"
@@ -155,7 +156,8 @@ async def test_an_unresolved_team_blocks_the_fixture_entirely():
     resolver = TeamResolver(db)
 
     fixture_id = await upsert_fixture(
-        type("Ctx", (), {"db": db})(), resolver, "comp-uuid", _parsed()
+        type("Ctx", (), {"db": db})(), resolver, "api_football", "comp-uuid",
+        _parsed(),
     )
 
     assert fixture_id is None
@@ -172,7 +174,8 @@ async def test_an_existing_fixture_is_updated_not_duplicated():
     resolver = TeamResolver(db)
 
     fixture_id = await upsert_fixture(
-        type("Ctx", (), {"db": db})(), resolver, "comp-uuid", _parsed()
+        type("Ctx", (), {"db": db})(), resolver, "api_football", "comp-uuid",
+        _parsed(),
     )
 
     assert fixture_id == "existing-fixture-uuid"
@@ -316,23 +319,22 @@ async def test_a_vendor_error_is_logged_not_swallowed(caplog):
 
     class FakeResponse:
         body = {"errors": {"season": "requested season is not available"},
-                "response": []}
+                "matches": []}
 
     class FakeClient:
-        async def fixtures(self, league_id, season):
+        async def matches(self, code, **kwargs):
             return FakeResponse()
 
     db = FakeDb(
         {
-            "select c.id as competition_id": [
+            "join competition_source_ids s\n            on s.competition_id = c.id and s.source = 'football_data'": [
                 {
                     "competition_id": "comp-uuid",
                     "name": "Premier League",
-                    "needs_standings": True,
-                    "source_id": "39",
-                    "resolved_season": 2026,
+                    "source_id": "PL",
                 }
-            ]
+            ],
+            "join competition_source_ids af": [],
         }
     )
     ctx = type(
@@ -340,19 +342,113 @@ async def test_a_vendor_error_is_logged_not_swallowed(caplog):
         (),
         {
             "db": db,
-            "settings": type("S", (), {"api_football_key": "x"})(),
+            "settings": type(
+                "S", (), {"football_data_key": "x", "api_football_key": ""}
+            )(),
             "meter": None,
             "clock": None,
         },
     )()
 
     import gamesenze.jobs.fixture_sync as mod
-    original = mod.ApiFootball
-    mod.ApiFootball = lambda *a, **k: FakeClient()
+    original = mod.FootballData
+    mod.FootballData = lambda *a, **k: FakeClient()
     try:
         with caplog.at_level(logging.WARNING):
             await fixture_sync_main(ctx)
     finally:
-        mod.ApiFootball = original
+        mod.FootballData = original
 
     assert any("API reported" in r.message for r in caplog.records)
+
+
+# --- football-data.org resolver --------------------------------------------
+
+def test_find_by_code_is_case_insensitive_and_rejects_unknown():
+    from gamesenze.jobs.resolve_football_data import find_by_code
+
+    candidates = [{"code": "PL", "name": "Premier League"}]
+    assert find_by_code(candidates, "pl")["code"] == "PL"
+    assert find_by_code(candidates, "PLX") is None
+    assert find_by_code(candidates, "") is None
+
+
+async def test_confirm_from_picks_rejects_a_code_the_vendor_never_returned():
+    from gamesenze.jobs.resolve_football_data import confirm_from_picks
+
+    class FakeClient:
+        async def list_competitions(self):
+            class R:
+                body = {"competitions": [
+                    {"code": "PL", "name": "Premier League",
+                     "area": {"name": "England"},
+                     "currentSeason": {"startDate": "2026-08-15"}}
+                ]}
+            return R()
+
+    db = FakeDb()
+    ctx = type("Ctx", (), {"db": db, "clock": None})()
+    exit_code = await confirm_from_picks(
+        ctx, FakeClient(), "premier_league=ZZ", "test"
+    )
+
+    assert exit_code == 1
+    assert not db.wrote("insert into competition_source_ids")
+
+
+async def test_confirm_from_picks_writes_a_vendor_verified_code():
+    from gamesenze.clock import FrozenClock
+    from gamesenze.jobs.resolve_football_data import confirm_from_picks
+
+    class FakeClient:
+        async def list_competitions(self):
+            class R:
+                body = {"competitions": [
+                    {"code": "PL", "name": "Premier League",
+                     "area": {"name": "England"},
+                     "currentSeason": {"startDate": "2026-08-15"}}
+                ]}
+            return R()
+
+    db = FakeDb({"returning id": "comp-uuid"})
+    ctx = type("Ctx", (), {"db": db, "clock": FrozenClock(NOW)})()
+    exit_code = await confirm_from_picks(
+        ctx, FakeClient(), "premier_league=PL", "phone-test"
+    )
+
+    assert exit_code == 0
+    assert db.wrote("insert into competition_source_ids")
+
+
+async def test_confirm_from_picks_rejects_an_unknown_competition_key():
+    from gamesenze.jobs.resolve_football_data import confirm_from_picks
+
+    class FakeClient:
+        async def list_competitions(self):
+            class R:
+                body = {"competitions": []}
+            return R()
+
+    db = FakeDb()
+    ctx = type("Ctx", (), {"db": db, "clock": None})()
+    exit_code = await confirm_from_picks(
+        ctx, FakeClient(), "not_a_real_key=PL", "test"
+    )
+    assert exit_code == 1
+    assert not db.wrote("insert into competition_source_ids")
+
+
+async def test_dump_writes_nothing_and_lists_unresolved():
+    from gamesenze.jobs.resolve_football_data import dump
+
+    class FakeClient:
+        async def list_competitions(self):
+            class R:
+                body = {"competitions": []}
+            return R()
+
+    db = FakeDb()
+    ctx = type("Ctx", (), {"db": db})()
+    await dump(ctx, FakeClient())
+
+    assert not db.wrote("insert into")
