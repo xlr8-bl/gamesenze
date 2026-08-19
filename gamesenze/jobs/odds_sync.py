@@ -96,6 +96,20 @@ async def main(ctx: JobContext) -> int:
         )
         return 0
 
+    # Collected across the whole run and written in one batched insert at the
+    # end (see below) instead of one execute() per row — a single game can
+    # carry 50+ rows (bookmakers x markets x outcomes), and ~80 games' worth
+    # of one-row-per-round-trip inserts is what made this slow the first
+    # time it ran for real. Same fix as jobs/seed.py's original slowness.
+    snap_fixture_ids: list[str] = []
+    snap_captured_ats: list = []
+    snap_bookmakers: list[str] = []
+    snap_markets: list[str] = []
+    snap_selections: list[str] = []
+    snap_odds: list[float] = []
+    snap_window_labels: list[str] = []
+    snap_is_closing: list[bool] = []
+
     matched = unmatched = rejected = 0
     for comp in competitions:
         sport_key = LEAGUE_KEYS[comp["name"]]
@@ -129,24 +143,37 @@ async def main(ctx: JobContext) -> int:
                 log.warning("fixture %s: rejected odds row: %s", fixture_id, r)
 
             for row in rows:
-                await ctx.db.execute(
-                    """
-                    insert into odds_snapshots (fixture_id, captured_at, bookmaker,
-                                                market, selection, decimal_odds,
-                                                window_label, is_closing)
-                    values ($1, $2, $3, $4, $5, $6, $7, $8)
-                    """,
-                    fixture_id,
-                    row["captured_at"],
-                    row["bookmaker"],
-                    row["market"],
-                    row["selection"],
-                    row["decimal_odds"],
-                    row["window_label"],
-                    row["is_closing"],
-                )
+                snap_fixture_ids.append(fixture_id)
+                snap_captured_ats.append(row["captured_at"])
+                snap_bookmakers.append(row["bookmaker"])
+                snap_markets.append(row["market"])
+                snap_selections.append(row["selection"])
+                snap_odds.append(row["decimal_odds"])
+                snap_window_labels.append(row["window_label"])
+                snap_is_closing.append(row["is_closing"])
             if rows:
                 matched += 1
+
+    if snap_fixture_ids:
+        await ctx.db.execute(
+            """
+            insert into odds_snapshots (fixture_id, captured_at, bookmaker,
+                                        market, selection, decimal_odds,
+                                        window_label, is_closing)
+            select * from unnest(
+                $1::uuid[], $2::timestamptz[], $3::text[], $4::text[],
+                $5::text[], $6::numeric[], $7::text[], $8::bool[]
+            )
+            """,
+            snap_fixture_ids,
+            snap_captured_ats,
+            snap_bookmakers,
+            snap_markets,
+            snap_selections,
+            snap_odds,
+            snap_window_labels,
+            snap_is_closing,
+        )
 
     print(
         f"odds captured for {matched} fixture(s), {unmatched} game(s) not "

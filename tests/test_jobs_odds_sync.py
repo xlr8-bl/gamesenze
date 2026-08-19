@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from gamesenze.jobs import odds_sync
 from gamesenze.jobs.odds_sync import covered_competitions, match_fixture
+from gamesenze.providers.base import Response
 from tests.conftest import requires_pg
 
 pytestmark = requires_pg
@@ -152,3 +154,105 @@ async def test_match_fixture_picks_the_closer_of_two_candidates(job_ctx, pg):
 
     assert found == near_id
     assert found != far_id
+
+
+class _FakeTransport:
+    """Stands in for the vendor: returns one matchable game, one that
+    resolves no team on either side, in the real /odds response shape."""
+
+    def __init__(self, kickoff):
+        self._kickoff = kickoff
+
+    async def get(self, url, *, params, headers):
+        commence = self._kickoff.strftime("%Y-%m-%dT%H:%M:%SZ")
+        body = [
+            {
+                "id": "matchable",
+                "sport_key": "soccer_epl",
+                "commence_time": commence,
+                "home_team": "Arsenal",
+                "away_team": "Coventry City",
+                "bookmakers": [
+                    {
+                        "key": "pinnacle",
+                        "markets": [
+                            {
+                                "key": "h2h",
+                                "outcomes": [
+                                    {"name": "Arsenal", "price": 1.5},
+                                    {"name": "Coventry City", "price": 6.0},
+                                    {"name": "Draw", "price": 4.0},
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            },
+            {
+                "id": "unmatchable",
+                "sport_key": "soccer_epl",
+                "commence_time": commence,
+                "home_team": "Nobody FC",
+                "away_team": "Nowhere United",
+                "bookmakers": [],
+            },
+        ]
+        return Response(200, body, url)
+
+
+async def test_main_matches_a_fixture_and_backlogs_an_unresolved_one(
+    job_ctx, pg, monkeypatch, capsys
+):
+    comp = await _competition(pg, "Premier League")
+    home = await _team(pg, "Arsenal")
+    away = await _team(pg, "Coventry City")
+    await pg.execute(
+        "insert into team_aliases (canonical_team_id, source, source_name) "
+        "values ($1, 'odds_api', 'Arsenal')",
+        home,
+    )
+    await pg.execute(
+        "insert into team_aliases (canonical_team_id, source, source_name) "
+        "values ($1, 'odds_api', 'Coventry City')",
+        away,
+    )
+    fixture_id = await pg.fetchval(
+        "insert into fixtures (sport, competition_id, home_team_id, away_team_id, "
+        "kickoff_at, status) values ('football', $1, $2, $3, $4, 'scheduled') "
+        "returning id",
+        comp,
+        home,
+        away,
+        KICKOFF,
+    )
+    await _resolve_against_football_data(pg, comp, "PL")
+
+    real_init = odds_sync.OddsApi.__init__
+
+    def fake_init(self, api_key, *, db, meter, transport=None, clock=None):
+        real_init(self, api_key, db=db, meter=meter, transport=_FakeTransport(KICKOFF), clock=clock)
+
+    monkeypatch.setattr(odds_sync.OddsApi, "__init__", fake_init)
+    from gamesenze.config import Settings
+
+    job_ctx.settings = Settings(odds_api_key="test-key")
+
+    result = await odds_sync.main(job_ctx)
+
+    assert result == 0
+    out = capsys.readouterr().out
+    assert "odds captured for 1 fixture(s), 1 game(s) not matched" in out
+
+    stored = await pg.fetch(
+        "select bookmaker, market, selection, decimal_odds from odds_snapshots "
+        "where fixture_id = $1 order by selection",
+        fixture_id,
+    )
+    assert len(stored) == 3
+    assert {r["selection"] for r in stored} == {"Arsenal", "Coventry City", "Draw"}
+
+    backlog = await pg.fetch(
+        "select source_name from unresolved_team_names where source = 'odds_api' "
+        "order by source_name"
+    )
+    assert [r["source_name"] for r in backlog] == ["Nobody FC", "Nowhere United"]
