@@ -57,5 +57,18 @@ async def test_a_second_consecutive_failure_is_a_real_outage_not_swallowed(monke
         await _insert_odds_snapshots(ctx, *EMPTY_COLUMNS)
 
 
+async def test_a_stuck_connection_that_times_out_is_also_retried(monkeypatch):
+    """AsyncpgDb's command_timeout turns a hung connection into a prompt
+    TimeoutError rather than a multi-minute wait for the OS to notice — seen
+    live. That only helps if the retry actually catches it too."""
+    monkeypatch.setattr("gamesenze.jobs.odds_sync.asyncio.sleep", _no_sleep)
+    db = _FailOnceDb(TimeoutError("command timed out"))
+    ctx = SimpleNamespace(db=db)
+
+    await _insert_odds_snapshots(ctx, *EMPTY_COLUMNS)
+
+    assert db.calls == 2
+
+
 async def _no_sleep(*args, **kwargs) -> None:
     return None

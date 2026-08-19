@@ -56,7 +56,14 @@ class AsyncpgDb:
         self._pool = pool
 
     @classmethod
-    async def connect(cls, dsn: str, *, min_size: int = 1, max_size: int = 4):
+    async def connect(
+        cls,
+        dsn: str,
+        *,
+        min_size: int = 1,
+        max_size: int = 4,
+        command_timeout: float = 30.0,
+    ):
         import asyncpg  # imported lazily so tests need no driver
 
         # GitHub Actions runners are IPv4-only and Supabase's direct database
@@ -66,7 +73,17 @@ class AsyncpgDb:
         # cache with a "prepared statement already exists" error partway
         # through a job — the worst kind of failure, because it works in
         # testing and fails under concurrency.
-        kwargs: dict[str, Any] = {"min_size": min_size, "max_size": max_size}
+        kwargs: dict[str, Any] = {
+            "min_size": min_size,
+            "max_size": max_size,
+            # Without this, a connection that dies silently on the client
+            # side (network drop, laptop sleep) leaves a query waiting on
+            # the OS to eventually notice, which can take minutes — seen
+            # live as a job appearing to hang before finally erroring. This
+            # caps that wait so the retry in execute()/_read() kicks in
+            # quickly instead of the whole job looking frozen.
+            "command_timeout": command_timeout,
+        }
         if uses_transaction_pooler(dsn):
             kwargs["statement_cache_size"] = 0
 
@@ -83,9 +100,12 @@ class AsyncpgDb:
         the query actually running — a network blip on the client side, or
         Supabase's pooler recycling it — and asyncpg surfaces that as a
         connection error on the query itself, not on acquire(). Seen live on
-        a flaky Windows connection. Reads are always safe to retry: there is
-        no side effect to duplicate. Writes are not (see execute() below), so
-        this retry deliberately does not cover them.
+        a flaky Windows connection: a dead connection that hung for minutes
+        before the OS finally noticed, which `command_timeout` above turns
+        into a prompt `TimeoutError` instead — caught here for the same
+        reason. Reads are always safe to retry: there is no side effect to
+        duplicate. Writes are not (see execute() below), so this retry
+        deliberately does not cover them.
         """
         import asyncpg
 
@@ -95,6 +115,7 @@ class AsyncpgDb:
         except (
             asyncpg.exceptions.ConnectionDoesNotExistError,
             asyncpg.exceptions.InterfaceError,
+            TimeoutError,
             OSError,
         ):
             await asyncio.sleep(1.0)

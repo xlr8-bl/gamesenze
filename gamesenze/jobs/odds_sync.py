@@ -219,6 +219,7 @@ async def _insert_odds_snapshots(ctx: JobContext, *columns) -> None:
     except (
         asyncpg.exceptions.ConnectionDoesNotExistError,
         asyncpg.exceptions.InterfaceError,
+        TimeoutError,
         OSError,
     ):
         log.warning("odds_snapshots write hit a dropped connection; retrying once")
