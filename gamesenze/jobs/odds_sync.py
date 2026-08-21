@@ -117,11 +117,26 @@ async def main(ctx: JobContext) -> int:
     # upsert safe under concurrency (see budget.py) — so fetch them all at
     # once instead of paying that latency eight times in a row.
     async def _fetch(comp):
+        import asyncpg
+
         sport_key = LEAGUE_KEYS[comp["name"]]
         try:
             response = await client.odds(sport_key)
         except ProviderError as exc:
             log.error("odds_api %s: %s", sport_key, exc)
+            return comp, []
+        except (
+            asyncpg.exceptions.ConnectionDoesNotExistError,
+            asyncpg.exceptions.InterfaceError,
+            TimeoutError,
+            OSError,
+        ) as exc:
+            # A dropped connection here (already retried once inside
+            # _store_provenance) is this one league's problem, not the
+            # batch's — asyncio.gather() would otherwise let one flaky
+            # league's persistent failure discard every other league's
+            # already-successful fetch. Seen live.
+            log.error("odds_api %s: connection issue, skipping this league: %s", sport_key, exc)
             return comp, []
         games = response.body if isinstance(response.body, list) else []
         return comp, games

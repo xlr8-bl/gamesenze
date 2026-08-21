@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import asyncpg
+
+from gamesenze.config import Settings
 from gamesenze.jobs import odds_sync
 from gamesenze.jobs.odds_sync import covered_competitions, match_fixture
 from gamesenze.providers.base import Response
@@ -300,3 +303,31 @@ async def test_resubmitting_the_same_batch_does_not_duplicate_rows(job_ctx, pg):
         "select count(*) from odds_snapshots where fixture_id = $1", fixture_id
     )
     assert count == 1
+
+
+async def test_one_leagues_persistent_connection_failure_does_not_sink_the_others(
+    job_ctx, pg, monkeypatch, capsys
+):
+    """Seen live: odds_sync crashed outright — an uncaught TimeoutError from
+    one league's provenance write took down asyncio.gather() for all 8
+    leagues, discarding 7 already-successful fetches. _fetch() must catch a
+    persistent connection failure on one league and continue with the rest.
+    """
+    working_comp = await _competition(pg, "Premier League")
+    await _resolve_against_football_data(pg, working_comp, "PL")
+    broken_comp = await _competition(pg, "La Liga")
+    await _resolve_against_football_data(pg, broken_comp, "PD")
+
+    async def fake_odds(self, sport_key, *, regions="uk", markets="h2h"):
+        if sport_key == "soccer_spain_la_liga":
+            raise asyncpg.exceptions.ConnectionDoesNotExistError("still gone")
+        return Response(200, [], "https://example.test")
+
+    monkeypatch.setattr(odds_sync.OddsApi, "odds", fake_odds)
+    job_ctx.settings = Settings(odds_api_key="test-key")
+
+    result = await odds_sync.main(job_ctx)
+
+    assert result == 0
+    out = capsys.readouterr().out
+    assert "odds captured for 0 fixture(s), 0 game(s) not matched" in out

@@ -13,6 +13,7 @@ caller cannot forget either:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 from dataclasses import dataclass, field
@@ -129,14 +130,7 @@ class MeteredClient:
         entity_ref: str,
     ) -> None:
         payload = json.dumps(response.body, default=str)
-        await self._db.execute(
-            """
-            insert into data_provenance (entity_type, entity_id, entity_ref,
-                                         source, fetched_at, request_url,
-                                         raw_response, parser_version,
-                                         content_hash)
-            values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            """,
+        args = (
             entity_type,
             entity_id,
             entity_ref,
@@ -147,3 +141,26 @@ class MeteredClient:
             "v1",
             hashlib.sha256(payload.encode()).hexdigest(),
         )
+        sql = """
+            insert into data_provenance (entity_type, entity_id, entity_ref,
+                                         source, fetched_at, request_url,
+                                         raw_response, parser_version,
+                                         content_hash)
+            values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            """
+        # Retried once on a dropped connection — seen live, and safe here
+        # unlike a pricing write: data_provenance is an append-only audit
+        # archive (REQ-SCRAPE-5), so a duplicate row from a retry is a
+        # harmless extra log entry, not corrupted decision data.
+        import asyncpg  # imported lazily so tests need no driver
+
+        try:
+            await self._db.execute(sql, *args)
+        except (
+            asyncpg.exceptions.ConnectionDoesNotExistError,
+            asyncpg.exceptions.InterfaceError,
+            TimeoutError,
+            OSError,
+        ):
+            await asyncio.sleep(1.0)
+            await self._db.execute(sql, *args)
