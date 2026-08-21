@@ -91,7 +91,7 @@ async def test_match_fixture_finds_the_right_teams_within_tolerance(job_ctx, pg)
 
     found = await match_fixture(job_ctx, comp, home, away, KICKOFF + timedelta(minutes=5))
 
-    assert found == fixture_id
+    assert found == str(fixture_id)
 
 
 async def test_match_fixture_returns_none_outside_the_tolerance_window(job_ctx, pg):
@@ -155,8 +155,8 @@ async def test_match_fixture_picks_the_closer_of_two_candidates(job_ctx, pg):
 
     found = await match_fixture(job_ctx, comp, home, away, KICKOFF + timedelta(minutes=1))
 
-    assert found == near_id
-    assert found != far_id
+    assert found == str(near_id)
+    assert found != str(far_id)
 
 
 class _FakeTransport:

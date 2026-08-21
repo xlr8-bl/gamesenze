@@ -12,7 +12,7 @@ from gamesenze.config import (
     PROVIDER_BUDGETS,
     UTILISATION_BAND,
 )
-from gamesenze.jobs.fixture_sync import upsert_fixture
+from gamesenze.jobs.fixture_sync import upsert_fixtures
 from gamesenze.jobs.resolve_competitions import candidates_from_response, prompt_choice
 from gamesenze.normalize import TeamResolver
 from tests.conftest import NOW, FakeDb
@@ -128,19 +128,26 @@ def _parsed(home="Liverpool", away="Man Utd"):
 async def test_a_new_fixture_is_inserted_when_both_teams_resolve():
     db = FakeDb(
         {
-            "select fixture_id from fixture_source_ids": None,
+            "select source_id, fixture_id from fixture_source_ids": [],
             "select canonical_team_id": "team-uuid",
-            "returning id": "fixture-uuid",
+            "insert into fixtures": [
+                {
+                    "id": "fixture-uuid",
+                    "home_team_id": "team-uuid",
+                    "away_team_id": "team-uuid",
+                    "kickoff_at": NOW,
+                }
+            ],
         }
     )
     resolver = TeamResolver(db)
 
-    fixture_id = await upsert_fixture(
-        type("Ctx", (), {"db": db})(), resolver, "api_football", "comp-uuid",
-        _parsed(),
+    synced, blocked = await upsert_fixtures(
+        type("Ctx", (), {"db": db})(), resolver, "api_football",
+        [("comp-uuid", _parsed())],
     )
 
-    assert fixture_id == "fixture-uuid"
+    assert (synced, blocked) == (1, 0)
     assert db.wrote("insert into fixtures")
     assert db.wrote("insert into fixture_source_ids")
 
@@ -149,36 +156,38 @@ async def test_an_unresolved_team_blocks_the_fixture_entirely():
     # REQ-DATA-NORM-1: no fixture row at all, not one with a guessed team.
     db = FakeDb(
         {
-            "select fixture_id from fixture_source_ids": None,
+            "select source_id, fixture_id from fixture_source_ids": [],
             "select canonical_team_id": None,
         }
     )
     resolver = TeamResolver(db)
 
-    fixture_id = await upsert_fixture(
-        type("Ctx", (), {"db": db})(), resolver, "api_football", "comp-uuid",
-        _parsed(),
+    synced, blocked = await upsert_fixtures(
+        type("Ctx", (), {"db": db})(), resolver, "api_football",
+        [("comp-uuid", _parsed())],
     )
 
-    assert fixture_id is None
+    assert (synced, blocked) == (0, 1)
     assert not db.wrote("insert into fixtures")
 
 
 async def test_an_existing_fixture_is_updated_not_duplicated():
     db = FakeDb(
         {
-            "select fixture_id from fixture_source_ids": "existing-fixture-uuid",
+            "select source_id, fixture_id from fixture_source_ids": [
+                {"source_id": "999", "fixture_id": "existing-fixture-uuid"}
+            ],
             "select canonical_team_id": "team-uuid",
         }
     )
     resolver = TeamResolver(db)
 
-    fixture_id = await upsert_fixture(
-        type("Ctx", (), {"db": db})(), resolver, "api_football", "comp-uuid",
-        _parsed(),
+    synced, blocked = await upsert_fixtures(
+        type("Ctx", (), {"db": db})(), resolver, "api_football",
+        [("comp-uuid", _parsed())],
     )
 
-    assert fixture_id == "existing-fixture-uuid"
+    assert (synced, blocked) == (1, 0)
     assert db.wrote("update fixtures")
     assert not db.wrote("insert into fixtures")
 

@@ -21,6 +21,7 @@ why nothing here guesses an ID.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from ..normalize import TeamResolver
@@ -59,65 +60,122 @@ async def api_football_only_competitions(ctx: JobContext) -> list[dict]:
     )
 
 
-async def upsert_fixture(
-    ctx: JobContext, resolver: TeamResolver, source: str, competition_id: str,
-    parsed: dict,
-) -> str | None:
-    """Insert or refresh one fixture. Returns None if a team could not be
-    resolved — the fixture is not written at all rather than written with a
-    guessed team, matching REQ-DATA-NORM-1.
+async def upsert_fixtures(
+    ctx: JobContext, resolver: TeamResolver, source: str,
+    rows: list[tuple[str, dict]],
+) -> tuple[int, int]:
+    """Insert or refresh a whole batch of fixtures. Returns (synced, blocked).
+
+    Batched rather than one-at-a-time: a nightly sync is ~9 competitions x
+    ~40 matches, and a per-match round trip (a lookup, then an insert or an
+    update, then a source-id insert) is ~1,000 sequential round trips to
+    Supabase — minutes of pure network latency, seen live. Four statements
+    total instead: resolve (cached, in-process), look every source_id up at
+    once, bulk-update what exists, bulk-insert what does not.
+
+    A fixture whose teams do not both resolve is left out entirely rather
+    than written with a guessed team — REQ-DATA-NORM-1, unchanged by the
+    batching.
     """
-    existing = await ctx.db.fetchval(
-        "select fixture_id from fixture_source_ids "
-        "where source = $1 and source_id = $2",
+    resolved: dict[str, dict] = {}
+    blocked = 0
+    for competition_id, parsed in rows:
+        home_id = await resolver.try_resolve(source, parsed["home_source_name"])
+        away_id = await resolver.try_resolve(source, parsed["away_source_name"])
+        if home_id is None or away_id is None:
+            blocked += 1
+            continue
+        # Keyed by source_id so the same match arriving twice in one batch
+        # collapses instead of racing itself through the insert below.
+        resolved[str(parsed["source_id"])] = {
+            "competition_id": competition_id,
+            "home_id": home_id,
+            "away_id": away_id,
+            **parsed,
+        }
+
+    if not resolved:
+        return 0, blocked
+
+    source_ids = list(resolved)
+    existing_rows = await ctx.db.fetch(
+        "select source_id, fixture_id from fixture_source_ids "
+        "where source = $1 and source_id = any($2::text[])",
         source,
-        parsed["source_id"],
+        source_ids,
     )
+    existing = {r["source_id"]: str(r["fixture_id"]) for r in existing_rows}
 
-    home_id = await resolver.try_resolve(source, parsed["home_source_name"])
-    away_id = await resolver.try_resolve(source, parsed["away_source_name"])
-    if home_id is None or away_id is None:
-        return None
+    to_update = [sid for sid in source_ids if sid in existing]
+    if to_update:
+        await ctx.db.execute(
+            """
+            update fixtures
+               set status = u.status, home_goals = u.home_goals,
+                   away_goals = u.away_goals, updated_at = now()
+              from unnest($1::uuid[], $2::text[], $3::int[], $4::int[])
+                   as u(id, status, home_goals, away_goals)
+             where fixtures.id = u.id
+            """,
+            [existing[sid] for sid in to_update],
+            [resolved[sid]["status"] for sid in to_update],
+            [resolved[sid]["home_goals"] for sid in to_update],
+            [resolved[sid]["away_goals"] for sid in to_update],
+        )
 
-    if existing is None:
-        fixture_id = await ctx.db.fetchval(
+    to_create = [sid for sid in source_ids if sid not in existing]
+    if to_create:
+        created = await ctx.db.fetch(
             """
             insert into fixtures (sport, competition_id, home_team_id,
                                   away_team_id, kickoff_at, status,
                                   home_goals, away_goals, venue)
-            values ('football', $1, $2, $3, $4, $5, $6, $7, $8)
-            returning id
+            select 'football', u.competition_id, u.home_id, u.away_id,
+                   u.kickoff_at, u.status, u.home_goals, u.away_goals, u.venue
+              from unnest($1::uuid[], $2::uuid[], $3::uuid[], $4::timestamptz[],
+                          $5::text[], $6::int[], $7::int[], $8::text[])
+                   as u(competition_id, home_id, away_id, kickoff_at, status,
+                        home_goals, away_goals, venue)
+            returning id, home_team_id, away_team_id, kickoff_at
             """,
-            competition_id,
-            home_id,
-            away_id,
-            parsed["kickoff_at"],
-            parsed["status"],
-            parsed["home_goals"],
-            parsed["away_goals"],
-            parsed["venue"],
+            [resolved[s]["competition_id"] for s in to_create],
+            [resolved[s]["home_id"] for s in to_create],
+            [resolved[s]["away_id"] for s in to_create],
+            [resolved[s]["kickoff_at"] for s in to_create],
+            [resolved[s]["status"] for s in to_create],
+            [resolved[s]["home_goals"] for s in to_create],
+            [resolved[s]["away_goals"] for s in to_create],
+            [resolved[s]["venue"] for s in to_create],
         )
-        await ctx.db.execute(
-            "insert into fixture_source_ids (fixture_id, source, source_id) "
-            "values ($1, $2, $3)",
-            fixture_id,
-            source,
-            parsed["source_id"],
-        )
-        return fixture_id
+        # Matched back by (home, away, kickoff) rather than by position, so
+        # this does not depend on unnest() preserving array order. That
+        # triple is unique within one batch — the same two teams do not
+        # kick off twice at the same instant.
+        by_triple = {
+            (str(r["home_team_id"]), str(r["away_team_id"]), r["kickoff_at"]): str(r["id"])
+            for r in created
+        }
+        pairs = []
+        for sid in to_create:
+            row = resolved[sid]
+            key = (str(row["home_id"]), str(row["away_id"]), row["kickoff_at"])
+            fixture_id = by_triple.get(key)
+            if fixture_id is not None:
+                pairs.append((fixture_id, sid))
 
-    await ctx.db.execute(
-        """
-        update fixtures
-           set status = $2, home_goals = $3, away_goals = $4, updated_at = now()
-         where id = $1
-        """,
-        existing,
-        parsed["status"],
-        parsed["home_goals"],
-        parsed["away_goals"],
-    )
-    return existing
+        if pairs:
+            await ctx.db.execute(
+                """
+                insert into fixture_source_ids (fixture_id, source, source_id)
+                select * from unnest($1::uuid[], $2::text[], $3::text[])
+                on conflict (source, source_id) do nothing
+                """,
+                [p[0] for p in pairs],
+                [source] * len(pairs),
+                [p[1] for p in pairs],
+            )
+
+    return len(resolved), blocked
 
 
 async def main(ctx: JobContext) -> int:
@@ -135,29 +193,34 @@ async def main(ctx: JobContext) -> int:
             ctx.settings.football_data_key, db=ctx.db, meter=ctx.meter,
             clock=ctx.clock,
         )
-        for comp in competitions:
+        # One HTTP call per competition, each a second or more. They are
+        # independent, so pay that latency once concurrently rather than
+        # nine times in a row. A single competition's failure returns an
+        # empty list instead of propagating out of gather() and discarding
+        # the other eight competitions' successful fetches.
+        async def _fetch(comp):
             try:
                 response = await client.matches(comp["source_id"])
-            except Exception as exc:  # noqa: BLE001 - one competition's
-                # failure must not stop the other eight from syncing.
+            except Exception as exc:  # noqa: BLE001
                 log.error("fixture sync failed for %s: %s", comp["name"], exc)
-                continue
+                return comp, []
 
             errors = (response.body or {}).get("errors")
             if errors:
                 log.warning("%s (code=%s): API reported %s",
                             comp["name"], comp["source_id"], errors)
+            return comp, (response.body or {}).get("matches", [])
 
-            body_matches = (response.body or {}).get("matches", [])
-            for raw in body_matches:
-                parsed = parse_match(raw)
-                fixture_id = await upsert_fixture(
-                    ctx, resolver, "football_data", comp["competition_id"], parsed
-                )
-                if fixture_id is None:
-                    blocked += 1
-                else:
-                    synced += 1
+        fetched = await asyncio.gather(*(_fetch(comp) for comp in competitions))
+
+        rows = [
+            (comp["competition_id"], parse_match(raw))
+            for comp, body_matches in fetched
+            for raw in body_matches
+        ]
+        synced, blocked = await upsert_fixtures(
+            ctx, resolver, "football_data", rows
+        )
     else:
         log.warning("FOOTBALL_DATA_KEY not set; no live fixture source available")
 

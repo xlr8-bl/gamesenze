@@ -59,24 +59,58 @@ async def covered_competitions(ctx: JobContext) -> list[dict]:
 async def match_fixture(
     ctx: JobContext, competition_id: str, home_id: str, away_id: str, commence_at
 ) -> str | None:
-    return await ctx.db.fetchval(
-        """
-        select id from fixtures
-         where competition_id = $1
-           and home_team_id = $2
-           and away_team_id = $3
-           and status = 'scheduled'
-           and kickoff_at between $4 and $5
-         order by abs(extract(epoch from (kickoff_at - $6)))
-         limit 1
-        """,
-        competition_id,
-        home_id,
-        away_id,
-        commence_at - KICKOFF_TOLERANCE,
-        commence_at + KICKOFF_TOLERANCE,
-        commence_at,
+    """Single-game lookup. Prefer `match_fixtures` for a whole board."""
+    found = await match_fixtures(
+        ctx, [(competition_id, home_id, away_id, commence_at)]
     )
+    return found.get((str(competition_id), str(home_id), str(away_id), commence_at))
+
+
+async def match_fixtures(ctx: JobContext, games: list[tuple]) -> dict[tuple, str]:
+    """Match a whole league board to fixtures in one query.
+
+    One round trip for the batch instead of one per game: a league board is
+    up to ~80 games and there are 8 leagues, so per-game lookups are ~500
+    sequential round trips to Supabase on top of the vendor calls. Keyed by
+    (competition_id, home_id, away_id, commence_at) so callers can look
+    their own game back up.
+    """
+    if not games:
+        return {}
+
+    rows = await ctx.db.fetch(
+        """
+        select input.idx, f.id as fixture_id
+          from unnest($1::int[], $2::uuid[], $3::uuid[], $4::uuid[],
+                      $5::timestamptz[])
+               as input(idx, competition_id, home_id, away_id, commence_at)
+          left join lateral (
+              select id from fixtures
+               where competition_id = input.competition_id
+                 and home_team_id = input.home_id
+                 and away_team_id = input.away_id
+                 and status = 'scheduled'
+                 and kickoff_at between input.commence_at - $6::interval
+                                     and input.commence_at + $6::interval
+               order by abs(extract(epoch from (kickoff_at - input.commence_at)))
+               limit 1
+          ) f on true
+        """,
+        list(range(len(games))),
+        [g[0] for g in games],
+        [g[1] for g in games],
+        [g[2] for g in games],
+        [g[3] for g in games],
+        KICKOFF_TOLERANCE,
+    )
+
+    out: dict[tuple, str] = {}
+    for r in rows:
+        if r["fixture_id"] is None:
+            continue
+        comp, home, away, commence = games[r["idx"]]
+        out[(str(comp), str(home), str(away), commence)] = str(r["fixture_id"])
+    return out
 
 
 async def main(ctx: JobContext) -> int:
@@ -144,6 +178,11 @@ async def main(ctx: JobContext) -> int:
     fetched = await asyncio.gather(*(_fetch(comp) for comp in competitions))
 
     matched = unmatched = rejected = 0
+
+    # Resolve every game's teams first (the resolver caches, so a repeated
+    # name costs nothing), then look every game's fixture up in one query
+    # rather than one round trip per game across ~8 boards.
+    candidates = []
     for comp, games in fetched:
         for game in games:
             home_id = await resolver.try_resolve("odds_api", game.get("home_team", ""))
@@ -151,33 +190,36 @@ async def main(ctx: JobContext) -> int:
             if home_id is None or away_id is None:
                 unmatched += 1
                 continue
-
             commence_at = _parse_commence(game.get("commence_time"))
-            fixture_id = await match_fixture(
-                ctx, comp["competition_id"], home_id, away_id, commence_at
-            )
-            if fixture_id is None:
-                unmatched += 1
-                continue
+            candidates.append((comp["competition_id"], home_id, away_id, commence_at, game))
 
-            rows, rejections = parse_odds(
-                game, captured_at=ctx.clock.now(), window_label="daily"
-            )
-            rejected += len(rejections)
-            for r in rejections:
-                log.warning("fixture %s: rejected odds row: %s", fixture_id, r)
+    fixture_by_key = await match_fixtures(ctx, [c[:4] for c in candidates])
 
-            for row in rows:
-                snap_fixture_ids.append(fixture_id)
-                snap_captured_ats.append(row["captured_at"])
-                snap_bookmakers.append(row["bookmaker"])
-                snap_markets.append(row["market"])
-                snap_selections.append(row["selection"])
-                snap_odds.append(row["decimal_odds"])
-                snap_window_labels.append(row["window_label"])
-                snap_is_closing.append(row["is_closing"])
-            if rows:
-                matched += 1
+    for competition_id, home_id, away_id, commence_at, game in candidates:
+        key = (str(competition_id), str(home_id), str(away_id), commence_at)
+        fixture_id = fixture_by_key.get(key)
+        if fixture_id is None:
+            unmatched += 1
+            continue
+
+        rows, rejections = parse_odds(
+            game, captured_at=ctx.clock.now(), window_label="daily"
+        )
+        rejected += len(rejections)
+        for r in rejections:
+            log.warning("fixture %s: rejected odds row: %s", fixture_id, r)
+
+        for row in rows:
+            snap_fixture_ids.append(fixture_id)
+            snap_captured_ats.append(row["captured_at"])
+            snap_bookmakers.append(row["bookmaker"])
+            snap_markets.append(row["market"])
+            snap_selections.append(row["selection"])
+            snap_odds.append(row["decimal_odds"])
+            snap_window_labels.append(row["window_label"])
+            snap_is_closing.append(row["is_closing"])
+        if rows:
+            matched += 1
 
     if snap_fixture_ids:
         await _insert_odds_snapshots(
