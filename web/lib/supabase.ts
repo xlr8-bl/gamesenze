@@ -86,3 +86,63 @@ export async function fetchBudgetStatus(): Promise<BudgetStatus[]> {
   if (error) throw error;
   return (data ?? []) as BudgetStatus[];
 }
+
+/* ---------------------------------------------------------------------------
+   Track record.
+
+   These read v_pick_record and v_record_summary (migration 0011). The sample
+   floor is applied in the view, not here: `rates_published` false means the
+   database itself is declining to quote a rate, and the page renders that
+   refusal in words rather than filling in a zero.
+--------------------------------------------------------------------------- */
+
+export type RecordRow = {
+  id: string;
+  market: string;
+  selection: string;
+  confidence_tag: "lean" | "strong_lean" | "best_bet" | null;
+  capture_odds: number | null;
+  closing_odds: number | null;
+  published_at: string | null;
+  settled_at: string | null;
+  result: "won" | "lost" | "push" | "void";
+  sport: string;
+  kickoff_at: string;
+  home_team: string | null;
+  away_team: string | null;
+  clv_pct: number | null;
+  unit_return: number | null;
+};
+
+export type RecordSummary = {
+  sport: string;
+  settled: number;
+  won: number;
+  lost: number;
+  pushed: number;
+  clv_sample: number;
+  rates_published: boolean;
+  sample_floor: number;
+  hit_rate_pct: number | null;
+  roi_pct: number | null;
+  avg_clv_pct: number | null;
+  units: number;
+};
+
+export async function fetchRecord(limit = 200): Promise<RecordRow[]> {
+  if (!isConfigured) return [];
+  const { data, error } = await getSupabase()
+    .from("v_pick_record")
+    .select("*")
+    .order("settled_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as RecordRow[];
+}
+
+export async function fetchRecordSummary(): Promise<RecordSummary[]> {
+  if (!isConfigured) return [];
+  const { data, error } = await getSupabase().from("v_record_summary").select("*");
+  if (error) throw error;
+  return (data ?? []) as RecordSummary[];
+}

@@ -76,7 +76,7 @@ export function correlationWarnings(legs: Leg[]): string[] {
   }
   if (new Set(legs.map((l) => l.sport)).size > 1) {
     warnings.push(
-      "Mixed-sport combo — check your book accepts cross-sport parlays before " +
+      "Mixed-sport combo. Check your book accepts cross-sport parlays before " +
         "relying on the price shown.",
     );
   }
