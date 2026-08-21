@@ -246,20 +246,30 @@ class TeamResolver:
         have a 1.00 match has no way to tell "still broken" from "already
         fixed, nobody told this table."
 
-        Calling `try_resolve` on an already-resolvable name is side-effect
-        free — it hits the cache path in `resolve()` and returns, no re-flag,
-        no re-record. Only genuinely unresolved names touch those paths.
+        Done as one set-based statement rather than by calling `try_resolve`
+        per backlog row, for two reasons. Speed is the obvious one: a 130-row
+        backlog cost ~130 lookups plus, for every name that still does not
+        resolve, a re-record and a re-raised flag on top — hundreds of round
+        trips just to *look* at the backlog.
+
+        The other reason is correctness. `resolve()` deliberately records a
+        sighting and raises a QA flag when a name misses, because that is
+        what should happen when a *vendor* sends an unknown name. Reusing it
+        to audit the backlog meant every inspection inflated
+        `unresolved_team_names.sightings` — the very column `backlog()` sorts
+        by — and re-raised flags for names nobody had newly seen. Reading a
+        queue must not mutate it.
         """
-        cleared = 0
-        for row in await self.backlog():
-            team_id = await self.try_resolve(row["source"], row["source_name"])
-            if team_id is not None:
-                await self._db.execute(
-                    "update unresolved_team_names set resolved_at = $3 "
-                    "where source = $1 and source_name = $2",
-                    row["source"],
-                    row["source_name"],
-                    self._clock.now(),
-                )
-                cleared += 1
-        return cleared
+        cleared = await self._db.fetch(
+            """
+            update unresolved_team_names u
+               set resolved_at = $1
+              from team_aliases a
+             where u.resolved_at is null
+               and a.source = u.source
+               and a.source_name = u.source_name
+            returning u.id
+            """,
+            self._clock.now(),
+        )
+        return len(cleared)

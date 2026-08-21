@@ -14,7 +14,7 @@ from gamesenze.normalize import (
     suggest_aliases,
 )
 from gamesenze.odds.schedule import monthly_object_cost
-from tests.conftest import FakeDb
+from tests.conftest import FakeDb, requires_pg
 
 
 def test_the_four_spellings_from_the_prd_collapse_to_one_key():
@@ -182,42 +182,99 @@ async def test_room_and_headroom_means_admitted(clock):
 async def test_sweep_resolved_clears_stale_backlog_entries(clock):
     # The exact scenario this fixes: a name failed once, an alias was added
     # later (e.g. by reseeding), and nothing ever told unresolved_team_names.
-    db = FakeDb(
-        {
-            "select * from unresolved_team_names": [
-                {"source": "football_data", "source_name": "Liverpool FC",
-                 "sightings": 3}
-            ],
-            "select canonical_team_id": "team-uuid",  # now resolves
-        }
-    )
+    db = FakeDb({"update unresolved_team_names": [{"id": 1}]})
     resolver = TeamResolver(db, clock)
 
     cleared = await resolver.sweep_resolved()
 
     assert cleared == 1
-    assert db.wrote("update unresolved_team_names set resolved_at")
+    assert db.wrote("update unresolved_team_names")
 
 
 async def test_sweep_resolved_leaves_genuinely_unresolved_entries(clock):
-    db = FakeDb(
-        {
-            "select * from unresolved_team_names": [
-                {"source": "football_data", "source_name": "Some New Club",
-                 "sightings": 1}
-            ],
-            "select canonical_team_id": None,  # still does not resolve
-        }
-    )
+    # No alias exists, so the join matches nothing and nothing is cleared.
+    db = FakeDb({"update unresolved_team_names": []})
     resolver = TeamResolver(db, clock)
 
     cleared = await resolver.sweep_resolved()
 
     assert cleared == 0
-    assert not db.wrote("update unresolved_team_names set resolved_at")
+
+
+async def test_sweep_resolved_does_not_inflate_sightings_or_reraise_flags(clock):
+    """Reading the queue must not mutate it.
+
+    sweep_resolved used to call try_resolve() per row, which for a name that
+    still does not resolve bumps unresolved_team_names.sightings and re-raises
+    a QA flag — so merely running `aliases backlog` corrupted the very counter
+    the backlog is sorted by.
+    """
+    db = FakeDb({"update unresolved_team_names": []})
+    resolver = TeamResolver(db, clock)
+
+    await resolver.sweep_resolved()
+
+    assert not db.wrote("insert into unresolved_team_names")
+    assert not db.wrote("insert into qa_flags")
 
 
 async def test_sweep_resolved_on_an_empty_backlog_is_a_no_op(clock):
     db = FakeDb({"select * from unresolved_team_names": []})
     resolver = TeamResolver(db, clock)
     assert await resolver.sweep_resolved() == 0
+
+
+# --- sweep_resolved against a real server -----------------------------------
+# It is a single set-based UPDATE ... FROM now, so the thing worth testing is
+# the SQL itself, which FakeDb cannot exercise.
+
+@requires_pg
+async def test_sweep_resolved_clears_only_aliased_names_against_real_sql(job_ctx, pg):
+    team = await pg.fetchval(
+        "insert into teams (sport, canonical_name) values ('football', $1) "
+        "returning id",
+        "Liverpool",
+    )
+    await pg.execute(
+        "insert into team_aliases (canonical_team_id, source, source_name) "
+        "values ($1, 'football_data', 'Liverpool FC')",
+        team,
+    )
+    await pg.execute(
+        "insert into unresolved_team_names (source, source_name, sightings) "
+        "values ('football_data', 'Liverpool FC', 3), "
+        "       ('football_data', 'Some New Club', 5)"
+    )
+
+    resolver = TeamResolver(job_ctx.db, job_ctx.clock)
+    cleared = await resolver.sweep_resolved()
+
+    assert cleared == 1
+    still_open = await pg.fetch(
+        "select source_name from unresolved_team_names where resolved_at is null"
+    )
+    assert [r["source_name"] for r in still_open] == ["Some New Club"]
+
+
+@requires_pg
+async def test_sweeping_does_not_mutate_the_queue_it_reads(job_ctx, pg):
+    """Reading the backlog must not bump sightings or re-raise flags.
+
+    sweep_resolved used to call try_resolve() per row; for a name that still
+    does not resolve that records a sighting and raises a QA flag, so simply
+    running `aliases backlog` corrupted the counter the backlog sorts by.
+    """
+    await pg.execute(
+        "insert into unresolved_team_names (source, source_name, sightings) "
+        "values ('football_data', 'Some New Club', 5)"
+    )
+    flags_before = await pg.fetchval("select count(*) from qa_flags")
+
+    resolver = TeamResolver(job_ctx.db, job_ctx.clock)
+    assert await resolver.sweep_resolved() == 0
+
+    assert await pg.fetchval(
+        "select sightings from unresolved_team_names where source_name = $1",
+        "Some New Club",
+    ) == 5
+    assert await pg.fetchval("select count(*) from qa_flags") == flags_before
