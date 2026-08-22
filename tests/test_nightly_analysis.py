@@ -11,8 +11,9 @@ qualifying bookmaker row for the same fixture from drafting a second pick.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
+from gamesenze.backtest.features import FeatureWindow
 from gamesenze.jobs import nightly_analysis
 from gamesenze.jobs._runtime import JobContext
 from tests.conftest import NOW, FakeDb
@@ -29,6 +30,8 @@ def _candidate_row(
         "kickoff_at": KICKOFF,
         "home_team_id": "home-team",
         "away_team_id": "away-team",
+        "home_name": "Home FC",
+        "away_name": "Away FC",
         "market": market,
         "selection": selection,
         "decimal_odds": decimal_odds,
@@ -108,8 +111,16 @@ async def test_only_the_best_edge_row_drafts_and_only_once_per_fixture(monkeypat
     db = FakeDb({"select f.id": rows})
     ctx = JobContext(db, _Settings())
 
+    def _window():
+        now = datetime.now(timezone.utc)
+        return FeatureWindow(
+            team_id="t", as_of=now, matches_used=10, xg_for=1.5, xg_against=1.3,
+            goals_for=1.4, goals_against=1.2, xg_sd=0.3, points_per_game=1.5,
+            latest_match_at=now,
+        )
+
     async def fake_features(db_arg, team_id, as_of, **kwargs):
-        return object()  # any non-None sentinel; price() is patched below
+        return _window()  # real window; price() is patched below
 
     class _FakePrices:
         def probability(self, market, selection):

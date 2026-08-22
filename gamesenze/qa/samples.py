@@ -46,6 +46,15 @@ GATES: dict[str, SampleGate] = {
     "head_to_head": SampleGate(
         "head_to_head", 4, "meetings in five years", "Head-to-head"
     ),
+    "recent_form": SampleGate(
+        "recent_form", 6, "recent matches", "Recent form"
+    ),
+    "scoring_trend": SampleGate(
+        "scoring_trend", 6, "recent matches", "Attacking output"
+    ),
+    "defensive_record": SampleGate(
+        "defensive_record", 6, "recent matches", "Defensive record"
+    ),
     "nba_usage_redistribution": SampleGate(
         "nba_usage_redistribution", 3, "games without the player",
         "NBA usage redistribution",

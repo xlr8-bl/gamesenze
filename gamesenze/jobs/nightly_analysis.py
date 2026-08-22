@@ -10,6 +10,7 @@ import json
 import logging
 
 from ..analysis.model import MatchModel
+from ..analysis.reasoning import confidence_from, write_reasoning
 from ..analysis.selection import select_pick
 from ..analysis.stakes import StakesInput, stakes_tags
 from ..backtest.features import get_features_as_of
@@ -40,8 +41,11 @@ async def main(ctx: JobContext) -> int:
     candidates = await ctx.db.fetch(
         """
         select f.id, f.sport, f.kickoff_at, f.home_team_id, f.away_team_id,
+               ht.canonical_name as home_name, at.canonical_name as away_name,
                o.market, o.selection, o.decimal_odds, o.bookmaker, o.captured_at
           from fixtures f
+          join teams ht on ht.id = f.home_team_id
+          join teams at on at.id = f.away_team_id
           join lateral (
               select market, selection, decimal_odds, bookmaker, captured_at
                 from odds_snapshots
@@ -98,8 +102,21 @@ async def main(ctx: JobContext) -> int:
             log.info("fixture %s not admitted: %s", row["id"], decision.reason)
             continue
 
-        factors = await _factor_counts(ctx, row)
+        factors = await _factor_counts(ctx, row, home, away)
         factor_set = evaluate_factors(factors)
+
+        excluded_labels = [v.message.split(":")[0].split(" sample")[0].strip()
+                           for v in factor_set.excluded]
+        reasoning = write_reasoning(
+            home_name=first["home_name"],
+            away_name=first["away_name"],
+            home=home,
+            away=away,
+            market=row["market"],
+            selection=row["selection"],
+            excluded_labels=excluded_labels,
+        )
+        confidence = confidence_from(choice.edge, choice.published_prob)
 
         # REQ-QA-3's gate checks stakes_computed is not None, not that it is
         # non-empty. A minimal, honest StakesInput — season-position tags
@@ -113,9 +130,10 @@ async def main(ctx: JobContext) -> int:
             """
             insert into picks (fixture_id, market, selection, internal_prob,
                                capture_odds, capture_bookmaker, captured_at,
+                               confidence_tag, reasoning_full,
                                valid_factors, excluded_factors, stakes_tags,
                                status)
-            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft')
+            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'draft')
             """,
             row["id"],
             row["market"],
@@ -124,6 +142,8 @@ async def main(ctx: JobContext) -> int:
             row["decimal_odds"],
             row["bookmaker"],
             row["captured_at"],
+            confidence,
+            reasoning,
             factor_set.valid,
             json.dumps(factor_set.ui_blocks()),
             tags,
@@ -154,8 +174,14 @@ def _minimal_stakes_input() -> StakesInput:
     )
 
 
-async def _factor_counts(ctx: JobContext, row) -> dict[str, int]:
-    """Sample sizes behind each factor, for the §5.4 gates."""
+async def _factor_counts(ctx: JobContext, row, home, away) -> dict[str, int]:
+    """Sample sizes behind each factor, for the §5.4 gates.
+
+    A factor is only as strong as the thinner of the two sides behind it, so
+    the form/attack/defence reads count the smaller of the two feature
+    windows. opponent-adjusted uses each side's full season sample; the
+    head-to-head is the shared history.
+    """
     h2h = int(
         await ctx.db.fetchval(
             """
@@ -169,16 +195,34 @@ async def _factor_counts(ctx: JobContext, row) -> dict[str, int]:
         )
         or 0
     )
-    season = int(
-        await ctx.db.fetchval(
-            "select count(*) from team_match_stats where team_id = $1 "
-            "and status = 'finished' and kickoff_at < $2",
-            row["home_team_id"],
-            row["kickoff_at"],
+
+    async def season_count(team_id) -> int:
+        return int(
+            await ctx.db.fetchval(
+                "select count(*) from team_match_stats where team_id = $1 "
+                "and status = 'finished' and kickoff_at < $2",
+                team_id,
+                row["kickoff_at"],
+            )
+            or 0
         )
-        or 0
+
+    season = min(
+        await season_count(row["home_team_id"]),
+        await season_count(row["away_team_id"]),
     )
-    return {"head_to_head": h2h, "opponent_adjusted": min(season, 38)}
+    window = min(home.matches_used, away.matches_used)
+
+    # Form, attacking output and defensive record are three distinct reads on
+    # the same recent window — how a match preview is actually structured —
+    # each gated on that window's depth.
+    return {
+        "opponent_adjusted": min(season, 38),
+        "head_to_head": h2h,
+        "recent_form": window,
+        "scoring_trend": window,
+        "defensive_record": window,
+    }
 
 
 if __name__ == "__main__":
