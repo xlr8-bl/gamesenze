@@ -46,7 +46,13 @@ LEAGUE_NAMES: dict[str, str] = {
     "ESP-La Liga": "La Liga",
     "ITA-Serie A": "Serie A",
 }
-SEASONS = ["2526"]
+# Last season plus the current one. The §5.4 sample gate counts every finished
+# match before a fixture's kickoff, regardless of season, so carrying the prior
+# season means the model has a full window from day one of the new campaign
+# rather than sitting at zero picks until enough of this season has been played.
+# Once this season has its own sample built, "2526" alone is enough — drop the
+# older one then if you want a purely current-season read.
+SEASONS = ["2425", "2526"]
 
 # Same reasoning as odds_sync's KICKOFF_TOLERANCE: matching one vendor's
 # clock against another's, not the same source twice.
