@@ -179,6 +179,20 @@ async def main(ctx: JobContext) -> int:
 
     matched = unmatched = rejected = 0
 
+    # Pre-resolve every team name across every board in one query, so the
+    # per-game try_resolve calls below are all cache reads rather than one
+    # Supabase round trip per distinct name on a cold cache (a full board is
+    # ~160 names — that is ~160 sequential round trips of pure latency saved).
+    await resolver.warm(
+        "odds_api",
+        [
+            name
+            for _, games in fetched
+            for game in games
+            for name in (game.get("home_team", ""), game.get("away_team", ""))
+        ],
+    )
+
     # Resolve every game's teams first (the resolver caches, so a repeated
     # name costs nothing), then look every game's fixture up in one query
     # rather than one round trip per game across ~8 boards.

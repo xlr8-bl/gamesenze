@@ -278,3 +278,44 @@ async def test_sweeping_does_not_mutate_the_queue_it_reads(job_ctx, pg):
         "Some New Club",
     ) == 5
     assert await pg.fetchval("select count(*) from qa_flags") == flags_before
+
+
+async def test_warm_prefills_the_cache_in_one_query(clock):
+    """A batch ingest resolves every name in one round trip, not one each.
+
+    Before warm(), matching an odds board resolved each team the first time it
+    was seen — on a cold cache that is one Supabase round trip per distinct
+    name, dozens to hundreds of them in a row, all pure latency. warm() folds
+    them into a single query; the per-row resolve() calls that follow must then
+    make no further database reads.
+    """
+    db = FakeDb(
+        {
+            "select source_name, canonical_team_id from team_aliases": [
+                {"source_name": "Manchester United", "canonical_team_id": "t1"},
+                {"source_name": "Arsenal", "canonical_team_id": "t2"},
+            ]
+        }
+    )
+    resolver = TeamResolver(db, clock)
+
+    # Duplicates and blanks collapse; one query goes out.
+    await resolver.warm("odds_api", ["Manchester United", "Arsenal", "Manchester United", ""])
+    assert len(db.writes_matching("select source_name, canonical_team_id")) == 1
+
+    # Both names now resolve straight from the cache.
+    assert await resolver.resolve("odds_api", "Manchester United") == "t1"
+    assert await resolver.resolve("odds_api", "Arsenal") == "t2"
+    assert db.writes_matching("select canonical_team_id from team_aliases") == []
+
+
+async def test_warm_leaves_unknown_names_to_the_normal_path(clock):
+    """A name with no alias is not cached by warm(), so it still blocks and is
+    recorded as unresolved exactly as before — warming changes speed, nothing
+    else."""
+    db = FakeDb({"select source_name, canonical_team_id from team_aliases": []})
+    resolver = TeamResolver(db, clock)
+
+    await resolver.warm("odds_api", ["Who FC"])
+    assert await resolver.try_resolve("odds_api", "Who FC") is None
+    assert db.wrote("insert into unresolved_team_names")

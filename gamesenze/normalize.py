@@ -19,6 +19,8 @@ thoroughly as a 0.4 one, and nothing downstream can tell.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import difflib
 import re
 import unicodedata
@@ -136,6 +138,33 @@ class TeamResolver:
         self._flags = FlagStore(db, clock)
         self._cache: dict[tuple[str, str], str] = {}
         self._unresolved_cache: set[tuple[str, str]] = set()
+
+    async def warm(self, source: str, names: Iterable[str]) -> None:
+        """Resolve many names in one query and fill the positive cache.
+
+        A batch ingest (odds_sync matching a league board, fixture_sync a
+        schedule) otherwise resolves each team in its own round trip the first
+        time it is seen — on a cold cache that is one Supabase round trip per
+        distinct name, dozens to hundreds of them, all sequential and all pure
+        latency. This pre-loads every name that already has an alias in a
+        single query, so the per-row try_resolve/resolve calls that follow are
+        cache reads. Names with no alias are simply left uncached and fall
+        through to the normal path, which records them as unresolved exactly as
+        before, so warming changes speed and nothing else.
+        """
+        wanted = sorted(
+            {n for n in names if n and (source, n) not in self._cache}
+        )
+        if not wanted:
+            return
+        rows = await self._db.fetch(
+            "select source_name, canonical_team_id from team_aliases "
+            "where source = $1 and source_name = any($2::text[])",
+            source,
+            wanted,
+        )
+        for r in rows:
+            self._cache[(source, r["source_name"])] = str(r["canonical_team_id"])
 
     async def resolve(
         self, source: str, source_name: str, *, fixture_id: str | None = None
