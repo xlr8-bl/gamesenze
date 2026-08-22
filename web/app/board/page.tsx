@@ -20,12 +20,7 @@ import {
   KickoffLine,
   PriceButton,
 } from "@/components/sport";
-import {
-  confidenceLabel,
-  factorLabel,
-  splitRead,
-  valueBand,
-} from "@/lib/analysis";
+import { confidenceLabel, factorLabel, splitRead } from "@/lib/analysis";
 import { competitionIdentity } from "@/lib/identity";
 import { fixturePhoto } from "@/lib/media";
 
@@ -207,17 +202,7 @@ function PickRow({
   const captured = pick.latest_odds_at ?? pick.published_at;
   const c = competitionIdentity(pick.competition);
 
-  const implied = odds ? 1 / odds : null;
-  // Kept only to derive the value band; the number itself never reaches the
-  // page. See lib/analysis: the edge is our probability minus the market's, so
-  // printing it hands a reader the model's number by subtraction.
-  const edge =
-    pick.internal_prob !== null && implied !== null
-      ? (pick.internal_prob - implied) * 100
-      : null;
-  const value = valueBand(edge);
   const read = splitRead(pick.reasoning_full);
-  const factors = pick.valid_factors ?? [];
 
   const disabled = added || full;
   const photo = fixturePhoto(pick.home_team, pick.away_team, index, c.key);
@@ -302,21 +287,14 @@ function PickRow({
           </div>
 
           <div className="pick-decision">
-            <div>
-              <div className="label">Confidence</div>
-              <div
-                className="cond"
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1.25rem",
-                  lineHeight: 1.05,
-                  color: pick.confidence_tag === "best_bet" ? "var(--brand)" : "var(--ink)",
-                  textTransform: "uppercase",
-                }}
+            {pick.confidence_tag && (
+              <span
+                className={pick.confidence_tag === "best_bet" ? "chip chip-brand" : "chip chip-outline-brand"}
+                style={{ fontSize: "var(--t-small)", padding: "5px var(--s-3)" }}
               >
                 {confidenceLabel(pick.confidence_tag)}
-              </div>
-            </div>
+              </span>
+            )}
             <div style={{ textAlign: "center" }}>
               <PriceButton
                 odds={odds}
@@ -330,18 +308,14 @@ function PickRow({
                 <Drift from={pick.capture_odds} to={pick.latest_odds} />
               </div>
             </div>
-            {value && (
-              <div style={{ minWidth: 96 }}>
-                <ValueMeter value={value} accent={c.accent} />
-              </div>
-            )}
           </div>
         </div>
 
-        {/* The read: the call at one weight, the argument at another. */}
+        {/* The pick sits above; the analysis reads underneath it in plain
+            football language, the way a tipsheet lays out a call. */}
         {read.lead && (
           <div style={{ marginTop: "var(--s-5)" }}>
-            <div className="label" style={{ color: "var(--brand)", marginBottom: 6 }}>The read</div>
+            <div className="label" style={{ color: "var(--brand)", marginBottom: 6 }}>Our analysis</div>
             <p
               style={{
                 fontSize: "1.0625rem",
@@ -361,35 +335,16 @@ function PickRow({
           </div>
         )}
 
-        {factors.length > 0 && (
-          <div style={{ marginTop: "var(--s-4)" }}>
-            <div className="label" style={{ marginBottom: 6 }}>Read from</div>
-            <div className="cluster">
-              {factors.map((f) => (
-                <Chip key={f}>{factorLabel(f)}</Chip>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/*
-          REQ-QA-2, tempered for a commercial page: we still never silently
-          drop a factor, but we no longer publish the exact sample threshold
-          that gated it. The honesty stays ("we held this back"); the rule we
-          hold it back by does not. The line is rebuilt from the factor's own
-          fields, so a message that still carries a number cannot leak it.
+          The honesty stays but stops being a statistics callout: one plain
+          line, muted, no jargon and no thresholds. We don't hide what we left
+          out; we don't lecture about it either.
         */}
         {excluded.length > 0 && (
-          <div className="stack-s" style={{ marginTop: "var(--s-4)" }}>
-            {excluded.map((factor) => (
-              <Notice tone="caution" key={factor.factor}>
-                <strong>{factorLabel(factor.factor)}</strong>{" "}
-                {factor.disposition === "provisional"
-                  ? "is on a thin sample this early in the season, so it is weighted down rather than leaned on here."
-                  : "does not yet have the sample behind it to trust, so this pick leaves it out."}
-              </Notice>
-            ))}
-          </div>
+          <p style={{ color: "var(--ink-3)", fontSize: "var(--t-small)", marginTop: "var(--s-3)", marginBottom: 0 }}>
+            Left out this early in the season:{" "}
+            {excluded.map((f) => factorLabel(f.factor).toLowerCase()).join(", ")}.
+          </p>
         )}
 
         <div
@@ -416,57 +371,6 @@ function PickRow({
         </div>
       </div>
     </article>
-  );
-}
-
-/**
- * The value meter.
- *
- * Four pips filled to a band, not a number. A bar drawn to an exact edge would
- * let a reader back out the model's probability from the price; a band says the
- * price is wrong in our favour and roughly how wrong, which is the commercial
- * signal, and stops there.
- */
-function ValueMeter({
-  value,
-  accent,
-}: {
-  value: { label: string; pips: number };
-  accent: string;
-}) {
-  return (
-    <div>
-      <div className="row" style={{ marginBottom: 6, gap: "var(--s-2)", flexWrap: "nowrap" }}>
-        <span className="label" style={{ marginBottom: 0 }}>Value</span>
-        <span
-          className="cond"
-          style={{ fontWeight: 700, fontSize: "var(--t-small)", letterSpacing: "0.03em", color: "var(--brand)" }}
-        >
-          {value.label}
-        </span>
-      </div>
-      <div
-        style={{ display: "flex", gap: 4 }}
-        role="img"
-        aria-label={`Value rating: ${value.label}`}
-      >
-        {[0, 1, 2, 3].map((i) => (
-          <span
-            key={i}
-            style={{
-              flex: 1,
-              height: 8,
-              borderRadius: 2,
-              background:
-                i < value.pips
-                  ? `linear-gradient(90deg, ${accent}, var(--brand))`
-                  : "var(--raised)",
-              boxShadow: i < value.pips ? `0 0 10px -3px ${accent}` : "none",
-            }}
-          />
-        ))}
-      </div>
-    </div>
   );
 }
 

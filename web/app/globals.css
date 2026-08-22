@@ -876,3 +876,8 @@ th.right, td.right { text-align: right; }
   .pick-hero { grid-template-columns: 1fr auto; align-items: center; gap: var(--s-6); }
   .pick-decision { flex-wrap: nowrap; align-items: center; }
 }
+
+/* The decision beside the pick: confidence chip and the price. Kept tight and
+   right-aligned like a bet-slip stake box. */
+.pick-decision { gap: var(--s-3); }
+@media (min-width: 720px) { .pick-decision { justify-content: flex-end; } }
