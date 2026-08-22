@@ -20,7 +20,9 @@ from tests.conftest import NOW, FakeDb
 KICKOFF = NOW + timedelta(hours=24)
 
 
-def _candidate_row(fixture_id, *, market="1x2", selection="home", decimal_odds=2.0):
+def _candidate_row(
+    fixture_id, *, market="1x2", selection="home", decimal_odds=2.0, bookmaker="test-book"
+):
     return {
         "id": fixture_id,
         "sport": "football",
@@ -30,7 +32,7 @@ def _candidate_row(fixture_id, *, market="1x2", selection="home", decimal_odds=2
         "market": market,
         "selection": selection,
         "decimal_odds": decimal_odds,
-        "bookmaker": "test-book",
+        "bookmaker": bookmaker,
         "captured_at": NOW,
     }
 
@@ -88,14 +90,20 @@ async def test_get_features_is_called_once_per_distinct_fixture_with_several(
 
 
 async def test_only_the_best_edge_row_drafts_and_only_once_per_fixture(monkeypatch):
-    """Three odds rows for one fixture: one far below threshold (skipped),
-    two that both clear it at different edges. Exactly one pick must be
-    drafted, using the higher-edge row.
+    """Two books quote a full 1X2 market for one fixture; the model rates the
+    home side as value. Exactly one pick must be drafted, at the better of the
+    two home prices — and the selector must de-vig each book, so it needs the
+    complete market, not a lone selection.
     """
     rows = [
-        _candidate_row("fixture-1", selection="home", decimal_odds=1.5),  # no edge
-        _candidate_row("fixture-1", selection="home", decimal_odds=2.5),  # some edge
-        _candidate_row("fixture-1", selection="home", decimal_odds=3.5),  # best edge
+        # Book A: a fair-ish market, home a touch of value.
+        _candidate_row("fixture-1", selection="home", decimal_odds=2.0, bookmaker="a"),
+        _candidate_row("fixture-1", selection="draw", decimal_odds=3.6, bookmaker="a"),
+        _candidate_row("fixture-1", selection="away", decimal_odds=4.5, bookmaker="a"),
+        # Book B: a better home price, so the larger edge.
+        _candidate_row("fixture-1", selection="home", decimal_odds=2.2, bookmaker="b"),
+        _candidate_row("fixture-1", selection="draw", decimal_odds=3.5, bookmaker="b"),
+        _candidate_row("fixture-1", selection="away", decimal_odds=4.3, bookmaker="b"),
     ]
     db = FakeDb({"select f.id": rows})
     ctx = JobContext(db, _Settings())
@@ -105,7 +113,8 @@ async def test_only_the_best_edge_row_drafts_and_only_once_per_fixture(monkeypat
 
     class _FakePrices:
         def probability(self, market, selection):
-            return 0.55  # our model's fixed view of "home" for this test
+            # Home is the value side; draw and away sit at/below the market.
+            return {"home": 0.60, "draw": 0.24, "away": 0.16}.get(selection)
 
     monkeypatch.setattr(nightly_analysis, "get_features_as_of", fake_features)
     monkeypatch.setattr(
@@ -138,4 +147,5 @@ async def test_only_the_best_edge_row_drafts_and_only_once_per_fixture(monkeypat
     assert len(picks) == 1
     args = picks[0][1]
     # args order: fixture_id, market, selection, internal_prob, capture_odds, ...
-    assert args[4] == 3.5  # capture_odds — the best-edge row's price
+    assert args[2] == "home"  # selection — the value side
+    assert args[4] == 2.2  # capture_odds — the better of the two home prices

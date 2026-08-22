@@ -10,17 +10,15 @@ import json
 import logging
 
 from ..analysis.model import MatchModel
+from ..analysis.selection import select_pick
 from ..analysis.stakes import StakesInput, stakes_tags
 from ..backtest.features import get_features_as_of
 from ..coverage import CoverageController
 from ..degrade import policy_from_statuses
-from ..odds.math import edge
 from ..qa.samples import evaluate_factors
 from ._runtime import JobContext, run_job
 
 log = logging.getLogger("gamesenze.nightly")
-
-EDGE_THRESHOLD = 0.04  # 4% over the price before a pick is worth drafting
 
 
 async def main(ctx: JobContext) -> int:
@@ -87,22 +85,13 @@ async def main(ctx: JobContext) -> int:
 
         prices = model.price(home, away)
 
-        best_row = None
-        best_prob = None
-        best_edge_value = None
-        for row in rows:
-            our_prob = prices.probability(row["market"], row["selection"])
-            if our_prob is None:
-                continue
-            our_edge = edge(our_prob, float(row["decimal_odds"]))
-            if our_edge < EDGE_THRESHOLD:
-                continue
-            if best_edge_value is None or our_edge > best_edge_value:
-                best_row, best_prob, best_edge_value = row, our_prob, our_edge
-
-        if best_row is None:
+        # De-vig, shrink toward the market, and refuse longshots and
+        # implausible edges — a raw argmax over prob*odds-1 only ever surfaces
+        # the noisiest tail. See analysis/selection.py.
+        choice = select_pick(prices, [dict(r) for r in rows])
+        if choice is None:
             continue
-        row, our_prob = best_row, best_prob
+        row, our_prob = choice.row, choice.published_prob
 
         decision = await coverage.can_cover(row["sport"], policy=policy)
         if not decision.admitted:
