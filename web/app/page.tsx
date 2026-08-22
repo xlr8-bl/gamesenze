@@ -3,6 +3,7 @@ import { Notice } from "@/components/ui";
 import { COMPETITIONS, competitionSurface } from "@/lib/identity";
 import { competitionPhoto } from "@/lib/media";
 import { CompetitionMark } from "@/components/sport";
+import { Reveal } from "@/components/motion";
 
 /**
  * The home page.
@@ -29,8 +30,13 @@ export default function Home() {
       <HomeLive />
 
       {/* Competition rail. The calendar is the product's texture, so it gets
-          its own band rather than a line of grey text. */}
-      <section className="shell" style={{ paddingTop: "var(--s-7)" }}>
+          its own band, cut across the page on a slant rather than stacked
+          under a horizontal rule. */}
+      <section
+        className="cut-top grain"
+        style={{ position: "relative", background: "var(--surface)", paddingBottom: "var(--s-7)" }}
+      >
+      <div className="shell">
         <SectionHead>What we cover</SectionHead>
         <div className="rail">
           {COMPETITIONS.map((c, i) => {
@@ -38,7 +44,7 @@ export default function Home() {
             return (
               <div
                 key={c.key}
-                className={`rise ${photo ? "photo photo-deep" : ""}`}
+                className={`reveal is-in ${photo ? "photo photo-deep" : ""}`}
                 style={{
                   ...(photo ? {} : competitionSurface(c, 0.45)),
                   ["--i" as string]: Math.min(i, 8),
@@ -90,6 +96,7 @@ export default function Home() {
             );
           })}
         </div>
+      </div>
       </section>
 
       {/* How a pick gets made. A real sequence, so it is numbered, and laid
@@ -105,7 +112,7 @@ export default function Home() {
             ["Compare", "A pick is drafted only where our number beats the price's implied probability by a margin worth the variance."],
             ["Gate", "A person reads it. Anything carrying an unresolved data flag never publishes. A day with no picks is a normal day."],
           ].map(([title, body], i) => (
-            <li key={title} className="step rise" style={{ ["--i" as string]: i }}>
+            <Reveal as="li" key={title} className="step" delay={i * 90}>
               <span className="step-dot" aria-hidden />
               <span className="poster step-num">{String(i + 1).padStart(2, "0")}</span>
               <h3 className="cond" style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontSize: "1.125rem" }}>
@@ -114,13 +121,17 @@ export default function Home() {
               <p style={{ color: "var(--ink-3)", fontSize: "var(--t-small)", marginTop: "var(--s-2)", marginBottom: 0 }}>
                 {body}
               </p>
-            </li>
+            </Reveal>
           ))}
         </ol>
       </section>
 
       {/* The differentiator, shown rather than described. */}
-      <section className="shell" style={{ paddingTop: "var(--s-8)" }}>
+      <section
+        className="cut-both grain"
+        style={{ position: "relative", background: "var(--surface)", marginTop: "var(--s-8)" }}
+      >
+      <div className="shell">
         <div
           style={{
             display: "grid",
@@ -132,9 +143,14 @@ export default function Home() {
           <div>
             <h2
               className="poster"
-              style={{ fontSize: "clamp(1.75rem, 1.2rem + 2.6vw, 3rem)", maxWidth: "14ch" }}
+              style={{ fontSize: "clamp(1.9rem, 1.2rem + 3vw, 3.5rem)", maxWidth: "13ch" }}
+              aria-label="Where the evidence ran out"
             >
-              Where the evidence ran out
+              Where the
+              <br />
+              <span className="poster-outline">evidence</span>
+              <br />
+              ran out
             </h2>
             <p style={{ color: "var(--ink-2)", marginTop: "var(--s-4)" }}>
               Most factors in a football model rest on a sample too small to
@@ -162,6 +178,7 @@ export default function Home() {
             </Notice>
           </div>
         </div>
+      </div>
       </section>
     </>
   );

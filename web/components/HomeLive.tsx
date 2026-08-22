@@ -3,15 +3,10 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
 import { fetchBoard, isConfigured, type Pick } from "@/lib/supabase";
-import { competitionIdentity } from "@/lib/identity";
-import { fixturePhoto } from "@/lib/media";
-import {
-  ClubBadge,
-  CompetitionMark,
-  Countdown,
-  Drift,
-  KickoffLine,
-} from "./sport";
+import { competitionIdentity, fixtureColours } from "@/lib/identity";
+import { fixturePhoto, teamMedia } from "@/lib/media";
+import { CountUp } from "./motion";
+import { ClubBadge, CompetitionMark, Countdown, Drift } from "./sport";
 
 /**
  * The hero, and the ticker under it.
@@ -48,83 +43,71 @@ export default function HomeLive() {
     ? fixturePhoto(feature.home_team, feature.away_team, 0, identity.key)
     : null;
 
+  const kit = fixtureColours(feature?.home_team, feature?.away_team);
+  const homeCrest = teamMedia(feature?.home_team)?.badge;
+  const awayCrest = teamMedia(feature?.away_team)?.badge;
+
   return (
     <>
+      {/*
+        The VS graphic: two clubs' colours meeting on a diagonal, their crests
+        at poster scale and half out of frame. It is the most recognisable
+        composition in football and it is precisely what a grid of cards will
+        never give you, which is the point.
+      */}
       <section
-        className="photo"
-        style={{
-          marginTop: -68,
-          paddingTop: 68,
-          minHeight: "min(84vh, 760px)",
-          display: "flex",
-          alignItems: "flex-end",
-          borderBottom: "1px solid var(--line)",
-        }}
+        className={`vs grain ${photo ? "photo" : ""}`}
+        style={{ marginTop: -68, paddingTop: 68 }}
       >
-        {photo ? (
-          <img src={photo} alt="" aria-hidden fetchPriority="high" />
-        ) : (
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              inset: 0,
-              zIndex: -2,
-              backgroundColor: identity.accent2,
-              backgroundImage: `radial-gradient(120% 90% at 12% -20%, ${identity.accent}66 0%, transparent 58%)`,
-            }}
-          />
+        {photo && <img src={photo} alt="" aria-hidden fetchPriority="high" />}
+
+        {feature && (
+          <>
+            <div className="vs-half vs-home" style={{ ["--club" as string]: kit.home }}>
+              {homeCrest && <img className="vs-crest" src={homeCrest} alt="" aria-hidden />}
+            </div>
+            <div className="vs-half vs-away" style={{ ["--club" as string]: kit.away }}>
+              {awayCrest && <img className="vs-crest" src={awayCrest} alt="" aria-hidden />}
+            </div>
+          </>
         )}
 
-        <div className="shell" style={{ paddingBottom: "var(--s-7)", paddingTop: "var(--s-8)" }}>
+        <div className="shell" style={{ position: "relative", paddingBottom: "var(--s-7)", paddingTop: "var(--s-8)" }}>
           {feature ? (
             <>
               <div className="cluster" style={{ gap: "var(--s-3)", marginBottom: "var(--s-4)" }}>
-                <CompetitionMark competition={feature.competition} size={34} />
+                <CompetitionMark competition={feature.competition} size={40} />
                 <span
                   className="cond"
-                  style={{
-                    fontWeight: 700,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    fontSize: "var(--t-small)",
-                  }}
+                  style={{ fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: "var(--t-small)" }}
                 >
                   {identity.name}
                 </span>
                 <span className="chip chip-brand">Next up</span>
               </div>
 
-              {/* Crests overlapping the headline, the way a match graphic
-                  stacks them, rather than a tidy row above it. */}
-              <div
-                className="cluster rise"
-                style={{ gap: "var(--s-2)", marginBottom: "var(--s-3)", flexWrap: "nowrap" }}
-              >
-                <ClubBadge name={feature.home_team} size={64} />
-                <span
-                  className="poster"
-                  style={{ fontSize: "2rem", color: "var(--brand)", margin: "0 2px" }}
-                >
-                  v
-                </span>
-                <ClubBadge name={feature.away_team} size={64} />
-              </div>
-
+              {/*
+                Home filled, "versus" knocked out, away filled: two weights
+                from one typeface. The pieces are separate elements for the
+                sake of the layout, which leaves the accessible name running
+                the three together, so the h1 carries its own label.
+              */}
               <h1
-                className="poster rise"
-                style={{ ["--i" as string]: 1, fontSize: "var(--t-poster)", maxWidth: "15ch" }}
+                className="poster"
+                style={{ fontSize: "var(--t-poster)", maxWidth: "16ch" }}
+                aria-label={`${feature.home_team} versus ${feature.away_team}`}
               >
-                {feature.home_team}
-                <br />
-                <span style={{ color: "var(--brand)" }}>v </span>
-                {feature.away_team}
+                <span style={{ display: "block" }}>{feature.home_team}</span>
+                <span
+                  className="poster-outline"
+                  style={{ display: "block", fontSize: "0.62em", letterSpacing: "0.02em" }}
+                >
+                  versus
+                </span>
+                <span style={{ display: "block" }}>{feature.away_team}</span>
               </h1>
 
-              <div
-                className="cluster rise"
-                style={{ ["--i" as string]: 2, gap: "var(--s-6)", marginTop: "var(--s-5)" }}
-              >
+              <div className="cluster" style={{ gap: "var(--s-6)", marginTop: "var(--s-5)" }}>
                 <div>
                   <div className="label">Kicks off in</div>
                   <Countdown to={feature.kickoff_at} />
@@ -134,28 +117,22 @@ export default function HomeLive() {
                   <div className="cond" style={{ fontWeight: 700, fontSize: "1.25rem", lineHeight: 1.1 }}>
                     {feature.selection}
                   </div>
-                  <div style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>
-                    {feature.market}
-                  </div>
+                  <div style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>{feature.market}</div>
                 </div>
                 <div>
                   <div className="label">Best price</div>
                   <div className="cluster" style={{ gap: "var(--s-2)" }}>
-                    <span
+                    <CountUp
+                      to={feature.latest_odds ?? feature.capture_odds ?? 0}
                       className="cond num"
-                      style={{ fontWeight: 700, fontSize: "2rem", lineHeight: 1, color: "var(--brand)" }}
-                    >
-                      {(feature.latest_odds ?? feature.capture_odds ?? 0).toFixed(2)}
-                    </span>
+                      style={{ fontWeight: 700, fontSize: "2.25rem", lineHeight: 1, color: "var(--brand)" }}
+                    />
                     <Drift from={feature.capture_odds} to={feature.latest_odds} />
                   </div>
                 </div>
               </div>
 
-              <div
-                className="cluster rise"
-                style={{ ["--i" as string]: 3, gap: "var(--s-3)", marginTop: "var(--s-6)" }}
-              >
+              <div className="cluster" style={{ gap: "var(--s-3)", marginTop: "var(--s-6)" }}>
                 <a href="/board/" className="btn btn-lg">
                   See the full board
                   <ArrowRight size={17} weight="bold" aria-hidden />

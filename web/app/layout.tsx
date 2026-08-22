@@ -17,6 +17,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preload" as="font" type="font/woff2" href="/fonts/BarlowCondensed-700-latin.woff2" crossOrigin="" />
         <link rel="preload" as="font" type="font/woff2" href="/fonts/Barlow-400-latin.woff2" crossOrigin="" />
         <meta name="theme-color" content="#080B10" />
+        {/*
+          Arms the scroll reveals before first paint. The hidden state lives
+          behind this class, so a page with no JavaScript, a failed chunk or a
+          crawler renders every section rather than a column of empty space.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "document.documentElement.classList.add('js-reveal')",
+          }}
+        />
       </head>
       <body>
         <Nav />

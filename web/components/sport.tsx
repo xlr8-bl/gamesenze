@@ -10,6 +10,7 @@ import {
   readableFill,
 } from "@/lib/identity";
 import { competitionMedia, competitionPhoto, teamMedia } from "@/lib/media";
+import { CountUp } from "./motion";
 
 /* ---------------------------------------------------------------------------
    Club badge
@@ -375,7 +376,9 @@ export function PriceButton({
       aria-pressed={selected}
       aria-label={label}
     >
-      <span className="price-val">{odds === null ? "n/a" : odds.toFixed(2)}</span>
+      <span className="price-val">
+        {odds === null ? "n/a" : <CountUp to={odds} duration={700} />}
+      </span>
       {book && <span className="price-book">{book}</span>}
     </button>
   );

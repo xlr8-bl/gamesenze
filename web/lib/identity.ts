@@ -291,6 +291,51 @@ export function inkOn(hex: string): string {
 }
 
 /**
+ * Two colours for a fixture graphic, guaranteed to be told apart.
+ *
+ * Bayern and Liverpool are both red, so a split-screen painted from their two
+ * primaries is one red rectangle with a seam in it. When the pair is too
+ * close, the away side falls back to its own secondary, and if that is no
+ * better its value is walked until the diagonal reads. The home club always
+ * keeps its own colour: it is the home side's graphic.
+ */
+export function fixtureColours(
+  home: string | null | undefined,
+  away: string | null | undefined,
+): { home: string; away: string } {
+  const h = clubIdentity(home);
+  const a = clubIdentity(away);
+  const apart = (x: string, y: string) =>
+    hueDistance(x, y) > 42 ||
+    Math.abs(relativeLuminance(x) - relativeLuminance(y)) > 0.18;
+
+  if (apart(h.primary, a.primary)) return { home: h.primary, away: a.primary };
+  if (apart(h.primary, a.secondary)) return { home: h.primary, away: a.secondary };
+  const toward = relativeLuminance(a.primary) > 0.2 ? 0 : 255;
+  let shifted = a.primary;
+  for (let i = 0; i < 10 && !apart(h.primary, shifted); i++) {
+    shifted = mix(shifted, toward, 0.1);
+  }
+  return { home: h.primary, away: shifted };
+}
+
+function hueDistance(a: string, b: string): number {
+  const d = Math.abs(hueOf(a) - hueOf(b));
+  return d > 180 ? 360 - d : d;
+}
+
+function hueOf(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max === min) return 0;
+  const d = max - min;
+  const raw =
+    max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (raw * 60 + 360) % 360;
+}
+
+/**
  * A badge fill and its ink, guaranteed to clear WCAG AA together.
  *
  * A handful of saturated mid-tones (Union Berlin's red, Arsenal's red) sit in

@@ -11,6 +11,7 @@ import { Empty, Loading, Notice, Result, Signed, Stat } from "@/components/ui";
 import { CompetitionMark } from "@/components/sport";
 import UnitsChart from "@/components/UnitsChart";
 import PageHead from "@/components/PageHead";
+import { CountUp, Reveal } from "@/components/motion";
 
 /**
  * The track record.
@@ -214,6 +215,50 @@ function Headline({ summary: s }: { summary: RecordSummary }) {
   const settledDecided = s.won + s.lost;
   return (
     <div className="stack-s">
+      {/*
+        One number at poster scale, and the rest at label scale beside it. A
+        component library will give you four tiles of identical weight, which
+        says every number matters the same amount. They do not: the return is
+        the number someone came here for.
+      */}
+      <div
+        className="panel panel-pad"
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: "var(--s-5)",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div className="label">Return, level stakes</div>
+          <div
+            className="mega num"
+            style={{ color: s.roi_pct !== null && Number(s.roi_pct) > 0 ? "var(--brand)" : "var(--ink)" }}
+          >
+            {s.roi_pct === null ? (
+              "held"
+            ) : (
+              <CountUp
+                to={Number(s.roi_pct)}
+                digits={1}
+                prefix={Number(s.roi_pct) > 0 ? "+" : ""}
+                suffix="%"
+                duration={1100}
+              />
+            )}
+          </div>
+        </div>
+        <div style={{ color: "var(--ink-3)", fontSize: "var(--t-small)", maxWidth: "34ch" }}>
+          across{" "}
+          <span className="cond num" style={{ color: "var(--ink)", fontWeight: 700 }}>
+            {s.settled}
+          </span>{" "}
+          settled picks, staking one unit on every one of them, winners and
+          losers alike. {Number(s.units).toFixed(2)} units.
+        </div>
+      </div>
+
       <div
         className="panel panel-pad"
         style={{
