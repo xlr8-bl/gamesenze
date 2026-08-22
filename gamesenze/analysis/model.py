@@ -109,7 +109,17 @@ class MatchModel:
         return max(lam_home, 0.15), max(lam_away, 0.15)
 
     def price(self, home: FeatureWindow, away: FeatureWindow) -> MatchPrices:
-        lam_home, lam_away = self.expected_goals(home, away)
+        """Price from each team's own averages — the un-adjusted baseline."""
+        return self.price_from_goals(*self.expected_goals(home, away))
+
+    def price_from_goals(self, lam_home: float, lam_away: float) -> MatchPrices:
+        """Build the full market from a pair of expected-goals figures.
+
+        Split out so an opponent-adjusted estimate (analysis/ratings.py) can be
+        priced through exactly the same scoreline grid as the baseline — only
+        the two lambdas differ, everything downstream is identical.
+        """
+        lam_home, lam_away = max(lam_home, 0.15), max(lam_away, 0.15)
 
         home_p = draw_p = away_p = 0.0
         over_p = btts_p = 0.0
