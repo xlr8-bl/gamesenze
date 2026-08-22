@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
-import { fetchBoard, isConfigured, type Pick } from "@/lib/supabase";
+import { fetchBoard, fetchLive, isConfigured, type LiveMatch, type Pick } from "@/lib/supabase";
 import { competitionIdentity, fixtureColours } from "@/lib/identity";
 import { fixturePhoto, teamMedia } from "@/lib/media";
 import { CountUp } from "./motion";
@@ -19,18 +19,22 @@ import { ClubBadge, CompetitionMark, Countdown, Drift } from "./sport";
  */
 export default function HomeLive() {
   const [picks, setPicks] = useState<Pick[] | null>(null);
+  const [liveMatches, setLiveMatches] = useState<LiveMatch[]>([]);
 
   useEffect(() => {
     if (!isConfigured) {
       setPicks([]);
       return;
     }
-    let live = true;
+    let on = true;
     fetchBoard()
-      .then((rows) => live && setPicks(rows))
-      .catch(() => live && setPicks([]));
+      .then((rows) => on && setPicks(rows))
+      .catch(() => on && setPicks([]));
+    fetchLive()
+      .then((m) => on && setLiveMatches(m))
+      .catch(() => {});
     return () => {
-      live = false;
+      on = false;
     };
   }, []);
 
@@ -160,8 +164,40 @@ export default function HomeLive() {
         </div>
       </section>
 
+      {liveMatches.length > 0 && <LiveStrip matches={liveMatches} />}
+
       {open.length > 1 && <Ticker picks={open} />}
     </>
+  );
+}
+
+/** A live scoreline banner under the hero, linking through to the hub. */
+function LiveStrip({ matches }: { matches: LiveMatch[] }) {
+  return (
+    <a
+      href="/live/"
+      className="ticker"
+      style={{ display: "block", textDecoration: "none", padding: "var(--s-3) 0" }}
+      aria-label={`${matches.length} matches live now`}
+    >
+      <div className="shell cluster" style={{ gap: "var(--s-5)", flexWrap: "nowrap", overflowX: "auto" }}>
+        <span className="live" style={{ flex: "none" }}>
+          <span className="live-dot" />
+          Live now
+        </span>
+        {matches.map((m) => (
+          <span key={m.fixture_id} className="cluster" style={{ gap: "var(--s-2)", flexWrap: "nowrap", flex: "none" }}>
+            <ClubBadge name={m.home_team} size={20} />
+            <span className="cond" style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+              {m.home_team} <span className="num" style={{ color: "var(--brand)" }}>{m.home_score}-{m.away_score}</span> {m.away_team}
+            </span>
+            <span className="cond num" style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>
+              {m.phase === "ht" ? "HT" : `${m.minute}'`}
+            </span>
+          </span>
+        ))}
+      </div>
+    </a>
   );
 }
 

@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { List, X } from "@phosphor-icons/react";
+import { fetchLive, isConfigured } from "@/lib/supabase";
 
 const LINKS = [
+  { href: "/live/", label: "Live" },
   { href: "/board/", label: "Board" },
   { href: "/record/", label: "Record" },
   { href: "/combo-builder/", label: "Combo" },
@@ -21,6 +23,19 @@ export default function Nav() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const [stuck, setStuck] = useState(false);
+  const [liveCount, setLiveCount] = useState(0);
+
+  useEffect(() => {
+    if (!isConfigured) return;
+    let on = true;
+    const load = () => fetchLive().then((m) => on && setLiveCount(m.length)).catch(() => {});
+    load();
+    const id = setInterval(load, 45_000);
+    return () => {
+      on = false;
+      clearInterval(id);
+    };
+  }, []);
 
   useEffect(() => {
     // IntersectionObserver on a sentinel, not a scroll listener: this fires
@@ -95,6 +110,7 @@ export default function Nav() {
                     // target, and a 16px line of text is not one.
                     display: "inline-flex",
                     alignItems: "center",
+                    gap: 6,
                     minHeight: 32,
                     padding: "0 2px",
                     textDecoration: "none",
@@ -107,6 +123,9 @@ export default function Nav() {
                   }}
                 >
                   {link.label}
+                  {link.href === "/live/" && liveCount > 0 && (
+                    <span className="live-dot" aria-label={`${liveCount} live`} />
+                  )}
                 </a>
               );
             })}

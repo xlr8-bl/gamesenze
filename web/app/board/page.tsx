@@ -12,7 +12,6 @@ import { addToCombo, readCombo } from "@/lib/comboStorage";
 import { MAX_LEGS } from "@/lib/combo";
 import { Chip, Empty, Loading, Notice } from "@/components/ui";
 import {
-  BestBet,
   ClubBadge,
   CompetitionHeader,
   Countdown,
@@ -21,6 +20,12 @@ import {
   KickoffLine,
   PriceButton,
 } from "@/components/sport";
+import {
+  confidenceLabel,
+  factorLabel,
+  splitRead,
+  valueBand,
+} from "@/lib/analysis";
 import { competitionIdentity } from "@/lib/identity";
 import { fixturePhoto } from "@/lib/media";
 
@@ -203,10 +208,16 @@ function PickRow({
   const c = competitionIdentity(pick.competition);
 
   const implied = odds ? 1 / odds : null;
+  // Kept only to derive the value band; the number itself never reaches the
+  // page. See lib/analysis: the edge is our probability minus the market's, so
+  // printing it hands a reader the model's number by subtraction.
   const edge =
     pick.internal_prob !== null && implied !== null
       ? (pick.internal_prob - implied) * 100
       : null;
+  const value = valueBand(edge);
+  const read = splitRead(pick.reasoning_full);
+  const factors = pick.valid_factors ?? [];
 
   const disabled = added || full;
   const photo = fixturePhoto(pick.home_team, pick.away_team, index, c.key);
@@ -267,74 +278,115 @@ function PickRow({
       </div>
 
       <div style={{ padding: "0 var(--s-4) var(--s-4)" }}>
-        {/* Two columns from tablet width up: the case on the left, the price
-            rail on the right. One column was leaving a thousand pixels of
-            nothing between the selection and its price. */}
-        <div className="pick-body">
-          <div className="pick-main">
-            <div className="label">Our selection</div>
-            <div className="cond" style={{ fontWeight: 700, fontSize: "1.5rem", lineHeight: 1.15 }}>
+        {/* The pick is the headline. Selection at poster scale on the left,
+            the decision (confidence, price, value) on the right. Everything
+            else on the card supports this line. */}
+        <div className="pick-hero">
+          <div>
+            <div className="label">Our pick</div>
+            <div
+              className="cond"
+              style={{
+                fontWeight: 700,
+                fontSize: "clamp(1.75rem, 1.2rem + 2vw, 2.5rem)",
+                lineHeight: 1.02,
+                letterSpacing: "-0.01em",
+                textTransform: "uppercase",
+              }}
+            >
               {pick.selection}
             </div>
-            <div style={{ color: "var(--ink-3)", fontSize: "var(--t-small)" }}>{pick.market}</div>
-
-            <div className="cluster" style={{ marginTop: "var(--s-3)" }}>
-              {pick.confidence_tag === "best_bet" ? (
-                <BestBet />
-              ) : pick.confidence_tag ? (
-                <Chip variant="outline-brand">{pick.confidence_tag.replace(/_/g, " ")}</Chip>
-              ) : null}
-              {(pick.stakes_tags ?? []).map((tag) => (
-                <Chip key={tag}>{tag.replace(/_/g, " ")}</Chip>
-              ))}
+            <div className="cond" style={{ color: "var(--ink-3)", fontSize: "1rem", letterSpacing: "0.03em", textTransform: "uppercase" }}>
+              {pick.market}
             </div>
-
-            {pick.reasoning_full && (
-              <p style={{ color: "var(--ink-2)", marginTop: "var(--s-3)", fontSize: "var(--t-small)" }}>
-                {pick.reasoning_full}
-              </p>
-            )}
           </div>
 
-          <div className="pick-rail">
-            <div className="row" style={{ flexWrap: "nowrap", alignItems: "flex-start" }}>
-              <div>
-                <div className="label">We make it</div>
-                <div className="cond num" style={{ fontWeight: 700, fontSize: "1.5rem", lineHeight: 1.15 }}>
-                  {pick.internal_prob !== null ? `${(pick.internal_prob * 100).toFixed(1)}%` : "held"}
-                </div>
-                <div style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>
-                  {implied !== null ? `price says ${(implied * 100).toFixed(1)}%` : "no price"}
-                </div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <PriceButton
-                  odds={odds}
-                  book={book}
-                  selected={added}
-                  disabled={disabled}
-                  onClick={onAdd}
-                  label={`${added ? "Remove" : "Add"} ${pick.selection} at ${odds?.toFixed(2)} ${added ? "from" : "to"} your combo`}
-                />
-                <div style={{ marginTop: 5, minHeight: 14 }}>
-                  <Drift from={pick.capture_odds} to={pick.latest_odds} />
-                </div>
+          <div className="pick-decision">
+            <div>
+              <div className="label">Confidence</div>
+              <div
+                className="cond"
+                style={{
+                  fontWeight: 700,
+                  fontSize: "1.25rem",
+                  lineHeight: 1.05,
+                  color: pick.confidence_tag === "best_bet" ? "var(--brand)" : "var(--ink)",
+                  textTransform: "uppercase",
+                }}
+              >
+                {confidenceLabel(pick.confidence_tag)}
               </div>
             </div>
-            {edge !== null && <EdgeBar edge={edge} accent={c.accent} />}
+            <div style={{ textAlign: "center" }}>
+              <PriceButton
+                odds={odds}
+                book={book}
+                selected={added}
+                disabled={disabled}
+                onClick={onAdd}
+                label={`${added ? "Remove" : "Add"} ${pick.selection} at ${odds?.toFixed(2)} ${added ? "from" : "to"} your combo`}
+              />
+              <div style={{ marginTop: 5, minHeight: 14 }}>
+                <Drift from={pick.capture_odds} to={pick.latest_odds} />
+              </div>
+            </div>
+            {value && (
+              <div style={{ minWidth: 96 }}>
+                <ValueMeter value={value} accent={c.accent} />
+              </div>
+            )}
           </div>
         </div>
 
+        {/* The read: the call at one weight, the argument at another. */}
+        {read.lead && (
+          <div style={{ marginTop: "var(--s-5)" }}>
+            <div className="label" style={{ color: "var(--brand)", marginBottom: 6 }}>The read</div>
+            <p
+              style={{
+                fontSize: "1.0625rem",
+                lineHeight: 1.4,
+                color: "var(--ink)",
+                fontWeight: 500,
+                marginBottom: read.body ? "var(--s-2)" : 0,
+              }}
+            >
+              {read.lead}
+            </p>
+            {read.body && (
+              <p style={{ color: "var(--ink-2)", fontSize: "var(--t-small)", marginBottom: 0 }}>
+                {read.body}
+              </p>
+            )}
+          </div>
+        )}
+
+        {factors.length > 0 && (
+          <div style={{ marginTop: "var(--s-4)" }}>
+            <div className="label" style={{ marginBottom: 6 }}>Read from</div>
+            <div className="cluster">
+              {factors.map((f) => (
+                <Chip key={f}>{factorLabel(f)}</Chip>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/*
-          REQ-QA-2: a factor we could not use renders as an explicit block.
-          Stating the limit is a trust asset; hiding it is the beginning of a
-          track record we cannot defend.
+          REQ-QA-2, tempered for a commercial page: we still never silently
+          drop a factor, but we no longer publish the exact sample threshold
+          that gated it. The honesty stays ("we held this back"); the rule we
+          hold it back by does not. The line is rebuilt from the factor's own
+          fields, so a message that still carries a number cannot leak it.
         */}
         {excluded.length > 0 && (
           <div className="stack-s" style={{ marginTop: "var(--s-4)" }}>
             {excluded.map((factor) => (
               <Notice tone="caution" key={factor.factor}>
-                {factor.message}
+                <strong>{factorLabel(factor.factor)}</strong>{" "}
+                {factor.disposition === "provisional"
+                  ? "is on a thin sample this early in the season, so it is weighted down rather than leaned on here."
+                  : "does not yet have the sample behind it to trust, so this pick leaves it out."}
               </Notice>
             ))}
           </div>
@@ -368,93 +420,51 @@ function PickRow({
 }
 
 /**
- * The edge, drawn to scale on a fixed domain of plus or minus 15 points, so
- * two picks on different days are directly comparable. A bar that always
- * filled the width would make every edge look the same size.
+ * The value meter.
+ *
+ * Four pips filled to a band, not a number. A bar drawn to an exact edge would
+ * let a reader back out the model's probability from the price; a band says the
+ * price is wrong in our favour and roughly how wrong, which is the commercial
+ * signal, and stops there.
  */
-function EdgeBar({ edge, accent }: { edge: number; accent: string }) {
-  const DOMAIN = 10;
-  const pct = Math.min(Math.abs(edge), DOMAIN) / DOMAIN;
-  const positive = edge >= 0;
+function ValueMeter({
+  value,
+  accent,
+}: {
+  value: { label: string; pips: number };
+  accent: string;
+}) {
   return (
-    <div style={{ marginTop: "var(--s-4)" }}>
+    <div>
       <div className="row" style={{ marginBottom: 6, gap: "var(--s-2)", flexWrap: "nowrap" }}>
-        <span className="label">Edge over the market</span>
+        <span className="label" style={{ marginBottom: 0 }}>Value</span>
         <span
-          className={`cond num ${positive ? "sign-pos" : "sign-neg"}`}
-          style={{ fontWeight: 700, fontSize: "1rem" }}
+          className="cond"
+          style={{ fontWeight: 700, fontSize: "var(--t-small)", letterSpacing: "0.03em", color: "var(--brand)" }}
         >
-          {positive ? "+" : ""}
-          {edge.toFixed(1)} pts
+          {value.label}
         </span>
       </div>
       <div
-        style={{ display: "flex", height: 12, gap: 2, position: "relative" }}
+        style={{ display: "flex", gap: 4 }}
         role="img"
-        aria-label={`Edge over the market: ${edge.toFixed(1)} percentage points, on a scale of plus or minus ${DOMAIN}`}
+        aria-label={`Value rating: ${value.label}`}
       >
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            justifyContent: "flex-end",
-            background: "var(--raised)",
-            borderRadius: "var(--r-1) 0 0 var(--r-1)",
-          }}
-        >
-          {!positive && (
-            <span
-              style={{
-                width: `${pct * 100}%`,
-                background: "var(--lost)",
-                borderRadius: "var(--r-1) 0 0 var(--r-1)",
-              }}
-            />
-          )}
-        </div>
-        {/* Zero, and the quarter marks either side of it. A centre-anchored
-            bar with no scale on it cannot be read. */}
-        {[12.5, 25, 37.5, 62.5, 75, 87.5].map((left) => (
+        {[0, 1, 2, 3].map((i) => (
           <span
-            key={left}
-            aria-hidden
+            key={i}
             style={{
-              position: "absolute",
-              left: `${left}%`,
-              top: 3,
-              width: 1,
-              height: 6,
-              background: "var(--line-firm)",
-              opacity: 0.7,
+              flex: 1,
+              height: 8,
+              borderRadius: 2,
+              background:
+                i < value.pips
+                  ? `linear-gradient(90deg, ${accent}, var(--brand))`
+                  : "var(--raised)",
+              boxShadow: i < value.pips ? `0 0 10px -3px ${accent}` : "none",
             }}
           />
         ))}
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: -4,
-            width: 2,
-            height: 20,
-            marginLeft: -1,
-            borderRadius: 1,
-            background: "var(--ink-3)",
-          }}
-        />
-        <div style={{ flex: 1, background: "var(--raised)", borderRadius: "0 var(--r-1) var(--r-1) 0" }}>
-          {positive && (
-            <span
-              style={{
-                display: "block",
-                height: "100%",
-                width: `${pct * 100}%`,
-                background: `linear-gradient(90deg, ${accent}, var(--brand))`,
-                borderRadius: "0 var(--r-1) var(--r-1) 0",
-              }}
-            />
-          )}
-        </div>
       </div>
     </div>
   );

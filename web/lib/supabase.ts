@@ -150,3 +150,43 @@ export async function fetchRecordSummary(): Promise<RecordSummary[]> {
   if (error) throw error;
   return (data ?? []) as RecordSummary[];
 }
+
+/* ---------------------------------------------------------------------------
+   Live
+
+   In-play matches from v_live_board (migration 0013). The board and this are
+   disjoint by kickoff time: a fixture moves here when it starts and to the
+   record when it ends, so nothing is ever in two places at once.
+--------------------------------------------------------------------------- */
+
+export type GoalEvent = {
+  minute: number;
+  side: "home" | "away";
+  kind: "goal" | "own_goal" | "pen_goal";
+  player: string | null;
+};
+
+export type LiveMatch = {
+  fixture_id: string;
+  sport: string;
+  kickoff_at: string;
+  competition: string | null;
+  home_team: string | null;
+  away_team: string | null;
+  phase: "live" | "ht";
+  minute: number | null;
+  home_score: number;
+  away_score: number;
+  updated_at: string;
+  market: string | null;
+  selection: string | null;
+  confidence_tag: "lean" | "strong_lean" | "best_bet" | null;
+  goals: GoalEvent[];
+};
+
+export async function fetchLive(): Promise<LiveMatch[]> {
+  if (!isConfigured) return [];
+  const { data, error } = await getSupabase().from("v_live_board").select("*");
+  if (error) throw error;
+  return (data ?? []) as LiveMatch[];
+}

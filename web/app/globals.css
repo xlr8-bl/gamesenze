@@ -851,3 +851,28 @@ th.right, td.right { text-align: right; }
   letter-spacing: -0.02em;
   text-transform: uppercase;
 }
+
+/* --------------------------------------------------------------------------
+   the pick, made the headline
+
+   The selection is the biggest thing on the card and the decision sits beside
+   it. One column on a phone; from tablet the pick and the decision separate so
+   the price never drifts a screen away from what it is a price for.
+   -------------------------------------------------------------------------- */
+
+.pick-hero {
+  display: grid;
+  gap: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+}
+.pick-decision {
+  display: flex;
+  gap: var(--s-4);
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+@media (min-width: 720px) {
+  .pick-hero { grid-template-columns: 1fr auto; align-items: center; gap: var(--s-6); }
+  .pick-decision { flex-wrap: nowrap; align-items: center; }
+}

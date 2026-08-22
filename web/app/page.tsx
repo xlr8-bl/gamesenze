@@ -104,13 +104,13 @@ export default function Home() {
           equal cards in a row is the most template-shaped thing a page can
           do. */}
       <section className="shell" style={{ paddingTop: "var(--s-8)" }}>
-        <SectionHead>How a pick reaches the board</SectionHead>
+        <SectionHead>The bar every pick clears</SectionHead>
         <ol className="steps">
           {[
-            ["Sync", "Fixtures from football-data.org, prices from a shared odds feed. Every club name resolves to one canonical team or the fixture is held back rather than guessed at."],
-            ["Price", "Team form, expected goals and defensive pressure produce our own probability. That number exists before any bookmaker's price is looked at."],
-            ["Compare", "A pick is drafted only where our number beats the price's implied probability by a margin worth the variance."],
-            ["Gate", "A person reads it. Anything carrying an unresolved data flag never publishes. A day with no picks is a normal day."],
+            ["Modelled", "Every fixture is priced by our own model before a single bookmaker line is looked at, so the number we work from is ours, not the market's echo."],
+            ["Only where it's wrong", "A pick is drafted only where the price is wrong in our favour by a margin that survives the variance. Fair prices get no pick."],
+            ["Read by a person", "Nothing auto-publishes. A person signs off every pick, and anything the data can't stand behind is pulled before it reaches you."],
+            ["Quiet when it should be", "A day with two picks and a day with none are both normal. We would rather post nothing than post filler."],
           ].map(([title, body], i) => (
             <Reveal as="li" key={title} className="step" delay={i * 90}>
               <span className="step-dot" aria-hidden />
@@ -153,10 +153,10 @@ export default function Home() {
               ran out
             </h2>
             <p style={{ color: "var(--ink-2)", marginTop: "var(--s-4)" }}>
-              Most factors in a football model rest on a sample too small to
-              trust. When one of ours does, we do not quietly drop it and
-              publish the rest. It appears on the pick itself, with the sample
-              we actually had. Two examples of the wording:
+              Early in a season, half the numbers are noise. We say so on the
+              pick rather than dress a thin sample up as a signal. Where a
+              factor is not ready to lean on, the card tells you, and the read
+              leans on last season's baselines until this one has caught up.
             </p>
             <a href="/record/" className="btn btn-ghost" style={{ marginTop: "var(--s-4)" }}>
               See the record
@@ -164,17 +164,16 @@ export default function Home() {
           </div>
           <div className="stack-s">
             <Notice tone="caution">
-              Referee tendency excluded: 6 matches at this level, below the
-              20-match minimum. This pick does not use it.
+              <strong>Referee tendency</strong> is on too thin a sample at this
+              level to lean on yet. This pick leaves it out.
             </Notice>
             <Notice tone="caution">
-              Striker finishing variance is provisional: 8 qualifying
-              appearances against a 10-match minimum. It is weighted down
-              rather than dropped.
+              <strong>Finishing variance</strong> is provisional this early, so
+              it is weighted down rather than leaned on.
             </Notice>
             <Notice>
-              Reduced odds cadence today. Prices outside the final three hours
-              are updating half as often.
+              <strong>Prices</strong> outside the final hours before kickoff are
+              refreshing less often today. Each carries the time it was read.
             </Notice>
           </div>
         </div>

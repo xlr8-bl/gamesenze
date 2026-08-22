@@ -91,6 +91,13 @@ cp .env.example .env            # fill in DATABASE_URL and keys
 
 python -m gamesenze.jobs.migrate
 python -m gamesenze.jobs.seed   # teams and aliases BEFORE any ingestion
+
+# Crests and competition photography for the frontend (one-off, re-run when
+# the club list changes). resolve_media writes db/seed/media.json from
+# TheSportsDB by name; fetch_media downloads and optimises it into
+# web/public/media so the site carries no third-party image request.
+python -m gamesenze.jobs.resolve_media
+python -m gamesenze.jobs.fetch_media
 ```
 
 Run the tests. The SQL-level ones need a Postgres; without `TEST_DATABASE_URL`
