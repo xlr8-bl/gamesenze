@@ -35,6 +35,7 @@ async def main(ctx: JobContext) -> int:
         ),
         "Accept": "text/html,application/xhtml+xml",
         "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://understat.com/",
     }
 
     async with httpx.AsyncClient(headers=headers) as client:
@@ -42,9 +43,13 @@ async def main(ctx: JobContext) -> int:
 
     if not rows:
         print(
-            "no Understat rows fetched. If this is a network block, the page "
-            "did not include its data — check https://understat.com/league/EPL "
-            "opens in your browser."
+            "No Understat rows fetched: the pages returned but did not include "
+            "their data, which means Understat gated this non-browser request "
+            "on your network. Fall back to the browser scrape for stats:\n"
+            "  python -m gamesenze.jobs.weekly_scrape   (15-25 min, headless browser)\n"
+            "  python -m gamesenze.jobs.stats_sync\n"
+            "Everything downstream (odds_sync, nightly_analysis) is the same "
+            "either way."
         )
         return 0
 

@@ -1053,7 +1053,11 @@
   {
    "canonical": "Bayern Munich",
    "country": "Germany",
-   "variants": []
+   "variants": [
+    "FC Bayern München",
+    "Bayern München",
+    "FC Bayern Munchen"
+   ]
   },
   {
    "canonical": "VfB Stuttgart",
@@ -1073,21 +1077,25 @@
    "canonical": "TSG Hoffenheim",
    "country": "Germany",
    "variants": [
-    "Hoffenheim"
+    "Hoffenheim",
+    "TSG 1899 Hoffenheim",
+    "1899 Hoffenheim"
    ]
   },
   {
    "canonical": "Elversberg",
    "country": "Germany",
    "variants": [
-    "SV Elversberg"
+    "SV Elversberg",
+    "SV 07 Elversberg"
    ]
   },
   {
    "canonical": "Bayer Leverkusen",
    "country": "Germany",
    "variants": [
-    "Leverkusen"
+    "Leverkusen",
+    "Bayer 04 Leverkusen"
    ]
   },
   {
@@ -1120,14 +1128,18 @@
    "country": "Germany",
    "variants": [
     "Mainz 05",
-    "Mainz"
+    "Mainz",
+    "1. FSV Mainz 05",
+    "1. FSV Mainz"
    ]
   },
   {
    "canonical": "SC Paderborn",
    "country": "Germany",
    "variants": [
-    "Paderborn"
+    "Paderborn",
+    "SC Paderborn 07",
+    "Paderborn 07"
    ]
   },
   {
@@ -1169,6 +1181,31 @@
    "variants": [
     "Schalke 04",
     "Schalke"
+   ]
+  },
+  {
+   "canonical": "Real Valladolid",
+   "country": "Spain",
+   "variants": [
+    "Real Valladolid CF",
+    "Valladolid"
+   ]
+  },
+  {
+   "canonical": "Leganés",
+   "country": "Spain",
+   "variants": [
+    "Leganes",
+    "CD Leganés",
+    "CD Leganes"
+   ]
+  },
+  {
+   "canonical": "Las Palmas",
+   "country": "Spain",
+   "variants": [
+    "UD Las Palmas",
+    "Las Palmas UD"
    ]
   }
  ],

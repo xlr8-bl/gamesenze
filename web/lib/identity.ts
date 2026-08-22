@@ -153,6 +153,9 @@ const CLUBS: Record<string, [string, string, string]> = {
   "Sevilla": ["SEV", "#D80027", "#FFFFFF"],
   "Valencia": ["VAL", "#F18E00", "#000000"],
   "Villarreal": ["VIL", "#FFE667", "#005187"],
+  "Real Valladolid": ["VLL", "#5E2D91", "#E4022D"],
+  "Leganés": ["LEG", "#004F9F", "#FFFFFF"],
+  "Las Palmas": ["LPA", "#FEDD00", "#0072CE"],
 
   // Italy
   "AC Milan": ["MIL", "#FB090B", "#000000"],
