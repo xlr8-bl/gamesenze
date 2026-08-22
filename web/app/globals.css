@@ -533,7 +533,6 @@ th.right, td.right { text-align: right; }
 .pick-body {
   display: grid;
   gap: var(--s-4);
-  margin-top: var(--s-4);
   padding-top: var(--s-4);
   border-top: 1px solid var(--line);
 }
@@ -544,5 +543,150 @@ th.right, td.right { text-align: right; }
     padding-left: var(--s-5);
     border-left: 1px solid var(--line);
     justify-content: flex-start;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   broadcast furniture
+
+   The motif is the lower third: a hard slab with a skewed trailing edge, the
+   shape a match graphic takes when it slides in over a pitch. It is the one
+   piece of geometry on the site that is not a rounded rectangle, which is the
+   point: a page built entirely from 12px-radius panels reads as a framework
+   template no matter what colour it is painted.
+   -------------------------------------------------------------------------- */
+
+.slab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 9px var(--s-6) 9px var(--s-4);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%);
+  font-family: var(--cond);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+.slab-brand { background: var(--brand); color: var(--on-bright); }
+
+/* Content that must reach the viewport edge, inside a centred column. */
+.bleed {
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+}
+
+/* A crest at poster scale behind a card. Decoration derived from real data,
+   which is the only kind worth having. */
+.watermark {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.055;
+  filter: grayscale(1) contrast(1.6);
+  mix-blend-mode: luminosity;
+}
+
+/* Photographic frames. The gradient is what makes type over a photo legible;
+   without it a hero headline is a coin flip against whatever is behind it. */
+.photo { position: relative; overflow: hidden; isolation: isolate; }
+.photo > img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+.photo::after {
+  content: "";
+  position: absolute; inset: 0; z-index: -1;
+  background:
+    linear-gradient(180deg, rgb(8 11 16 / 0.35) 0%, rgb(8 11 16 / 0.72) 55%, rgb(8 11 16 / 0.97) 100%),
+    linear-gradient(90deg, rgb(8 11 16 / 0.9) 0%, rgb(8 11 16 / 0.35) 55%, transparent 100%);
+}
+.photo-flat::after {
+  background:
+    linear-gradient(90deg, rgb(8 11 16 / 0.94) 0%, rgb(8 11 16 / 0.72) 42%, rgb(8 11 16 / 0.5) 100%),
+    linear-gradient(180deg, rgb(8 11 16 / 0.35) 0%, rgb(8 11 16 / 0.7) 100%);
+}
+
+/* The price ticker. One marquee, and it carries live data rather than logos. */
+.ticker {
+  overflow: hidden;
+  border-block: 1px solid var(--line);
+  background: var(--surface);
+}
+.ticker-track {
+  display: flex;
+  gap: var(--s-6);
+  width: max-content;
+  padding: 9px 0;
+  animation: ticker 48s linear infinite;
+}
+.ticker:hover .ticker-track,
+.ticker:focus-within .ticker-track { animation-play-state: paused; }
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+  .ticker { overflow-x: auto; }
+}
+
+/* A heavier floor, for a tile whose type sits directly over a photograph. */
+.photo-deep::after {
+  background:
+    linear-gradient(180deg, rgb(8 11 16 / 0.25) 0%, rgb(8 11 16 / 0.55) 45%, rgb(8 11 16 / 0.95) 100%);
+}
+
+/* --------------------------------------------------------------------------
+   the process stepper
+
+   A sequence laid along one rule, with a node on it per step. Four identical
+   bordered cards in a row is the single most template-shaped block a page can
+   contain, and it says nothing about the fact that these steps happen in
+   order.
+   -------------------------------------------------------------------------- */
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-5);
+  position: relative;
+}
+.step { position: relative; padding-left: var(--s-6); }
+.step-dot {
+  position: absolute;
+  left: 3px;
+  top: 9px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--brand) 22%, transparent);
+}
+.step-num { display: block; font-size: 1.5rem; color: var(--brand); line-height: 1; margin-bottom: 4px; }
+/* The rule the nodes sit on. */
+.steps::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 12px;
+  bottom: 12px;
+  width: 1px;
+  background: linear-gradient(180deg, var(--brand), color-mix(in oklab, var(--brand) 15%, transparent));
+}
+
+@media (min-width: 860px) {
+  .steps { grid-template-columns: repeat(4, 1fr); gap: var(--s-5); }
+  .step { padding-left: 0; padding-top: var(--s-6); }
+  .step-dot { left: 0; top: 12px; }
+  .steps::before {
+    left: 0;
+    right: 0;
+    top: 17px;
+    bottom: auto;
+    width: auto;
+    height: 1px;
+    background: linear-gradient(90deg, var(--brand), color-mix(in oklab, var(--brand) 12%, transparent));
   }
 }

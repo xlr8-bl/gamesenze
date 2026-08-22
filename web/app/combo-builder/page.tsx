@@ -14,6 +14,7 @@ import { clearCombo, readCombo, removeFromCombo } from "@/lib/comboStorage";
 import { getSupabase, isConfigured } from "@/lib/supabase";
 import { Empty, Notice, Stat } from "@/components/ui";
 import { ClubBadge } from "@/components/sport";
+import PageHead from "@/components/PageHead";
 
 const STAKES = [10, 25, 50, 100];
 
@@ -55,8 +56,14 @@ export default function ComboBuilder() {
 
   if (legs.length === 0) {
     return (
+      <>
+      <PageHead
+        eyebrow="Stack the board"
+        title="Combo builder"
+        lede="Two to five published picks, the combined price, and what our record actually says about combos that size."
+        photoFrom="uel"
+      />
       <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
-        <h1 className="poster" style={{ fontSize: "clamp(2rem, 1.5rem + 2.4vw, 3.25rem)" }}>Combo builder</h1>
         <Empty title="No picks selected">
           Add between {MIN_LEGS} and {MAX_LEGS} picks from the{" "}
           <a href="/board/">board</a> and the combined maths appears here. The
@@ -64,13 +71,21 @@ export default function ComboBuilder() {
           choose to save a combo.
         </Empty>
       </div>
+      </>
     );
   }
 
   return (
-    <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
+    <>
+      <PageHead
+        eyebrow="Stack the board"
+        title="Combo builder"
+        lede="Two to five published picks, the combined price, and what our record actually says about combos that size."
+        photoFrom="uel"
+      />
+      <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
       <div className="row">
-        <h1 className="poster" style={{ fontSize: "clamp(2rem, 1.5rem + 2.4vw, 3.25rem)" }}>Combo builder</h1>
+        <span className="label">Your slip</span>
         <span className="cond" style={{ color: "var(--ink-3)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
           <span className="num" style={{ color: "var(--brand)", fontWeight: 700 }}>{legs.length}</span> of {MAX_LEGS} legs
         </span>
@@ -184,7 +199,8 @@ export default function ComboBuilder() {
           </button>
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

@@ -16,11 +16,13 @@ import {
   ClubBadge,
   CompetitionHeader,
   Countdown,
+  CrestWatermark,
   Drift,
   KickoffLine,
   PriceButton,
 } from "@/components/sport";
 import { competitionIdentity } from "@/lib/identity";
+import { fixturePhoto } from "@/lib/media";
 
 const RUNG_BANNER: Record<
   BudgetStatus["ladder_rung"],
@@ -207,6 +209,7 @@ function PickRow({
       : null;
 
   const disabled = added || full;
+  const photo = fixturePhoto(pick.home_team, pick.away_team, index, c.key);
 
   return (
     <article
@@ -218,19 +221,37 @@ function PickRow({
           is placeable at a glance even out of its group. */}
       <div aria-hidden style={{ height: 3, background: `linear-gradient(90deg, ${c.accent}, transparent 70%)` }} />
 
-      <div style={{ padding: "var(--s-4)" }}>
-        <div className="row" style={{ alignItems: "flex-start", gap: "var(--s-4)" }}>
+      {/* The home side's crest at poster scale, bled off the right edge. It is
+          decoration derived from the row's own data rather than applied to it,
+          which is the only kind worth having. */}
+      <CrestWatermark
+        name={pick.home_team}
+        size={260}
+        style={{ right: -70, top: -40 }}
+      />
+
+      <div
+        className={photo ? "photo photo-flat" : undefined}
+        style={{
+          padding: "var(--s-4)",
+          minHeight: photo ? 108 : undefined,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        {photo && <img src={photo} alt="" aria-hidden loading="lazy" decoding="async" />}
+        <div className="row" style={{ alignItems: "center", gap: "var(--s-4)", width: "100%", position: "relative" }}>
           <div className="grow">
             <div className="cluster" style={{ gap: "var(--s-3)", flexWrap: "nowrap" }}>
               <div className="cluster" style={{ gap: 6, flexWrap: "nowrap" }}>
-                <ClubBadge name={pick.home_team} size={34} />
-                <ClubBadge name={pick.away_team} size={34} />
+                <ClubBadge name={pick.home_team} size={40} />
+                <ClubBadge name={pick.away_team} size={40} />
               </div>
               <div style={{ minWidth: 0 }}>
                 <h2
                   id={`pick-${pick.id}`}
                   className="cond"
-                  style={{ fontSize: "1.25rem", fontWeight: 700, letterSpacing: "0.01em", lineHeight: 1.15 }}
+                  style={{ fontSize: "1.375rem", fontWeight: 700, letterSpacing: "0.01em", lineHeight: 1.12 }}
                 >
                   {pick.home_team} <span style={{ color: "var(--ink-3)" }}>v</span> {pick.away_team}
                 </h2>
@@ -243,7 +264,9 @@ function PickRow({
             <Countdown to={pick.kickoff_at} />
           </div>
         </div>
+      </div>
 
+      <div style={{ padding: "0 var(--s-4) var(--s-4)" }}>
         {/* Two columns from tablet width up: the case on the left, the price
             rail on the right. One column was leaving a thousand pixels of
             nothing between the selection and its price. */}

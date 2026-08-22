@@ -9,14 +9,19 @@ import {
   competitionSurface,
   readableFill,
 } from "@/lib/identity";
+import { competitionMedia, competitionPhoto, teamMedia } from "@/lib/media";
 
 /* ---------------------------------------------------------------------------
    Club badge
 
-   A monogram in the club's own colours. No crest ships here: crests are
-   trademarks, and a badge that 404s on a slow connection is worse than one
-   that was never an image to begin with. This renders instantly at any size
-   and gives the board the visual texture a list of names never will.
+   The real crest where we have one, and a monogram in the club's colours where
+   we do not. The fallback is not a placeholder: it is what a club whose crest
+   we could not confirm by name is *supposed* to look like, because guessing is
+   how Real Sociedad ends up wearing Real Madrid's badge.
+
+   The image is swapped in on the client after it loads, so a crest that 404s
+   or a network that never answers leaves the monogram standing rather than a
+   broken-image box.
 --------------------------------------------------------------------------- */
 
 export function ClubBadge({
@@ -28,6 +33,9 @@ export function ClubBadge({
 }) {
   const club = clubIdentity(name);
   const { bg, ink } = readableFill(club.primary);
+  const media = teamMedia(name);
+  const [crestOk, setCrestOk] = useState(Boolean(media?.badge));
+
   return (
     <span
       aria-hidden
@@ -42,25 +50,72 @@ export function ClubBadge({
         position: "relative",
         overflow: "hidden",
         borderRadius: size * 0.28,
-        background: bg,
+        background: crestOk ? "transparent" : bg,
         color: ink,
         fontFamily: "var(--cond)",
         fontWeight: 700,
         fontSize: size * 0.34,
         letterSpacing: "0.02em",
-        boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 8px -2px rgb(0 0 0 / 0.7)",
+        boxShadow: crestOk
+          ? "none"
+          : "inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 8px -2px rgb(0 0 0 / 0.7)",
       }}
     >
-      <span
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: `linear-gradient(210deg, transparent 62%, ${club.secondary} 62%)`,
-          opacity: 0.95,
-        }}
-      />
-      <span style={{ position: "relative" }}>{club.abbr}</span>
+      {crestOk && media?.badge ? (
+        <img
+          src={media.badge}
+          alt=""
+          width={size}
+          height={size}
+          loading="lazy"
+          decoding="async"
+          onError={() => setCrestOk(false)}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            filter: "drop-shadow(0 2px 6px rgb(0 0 0 / 0.55))",
+          }}
+        />
+      ) : (
+        <>
+          <span
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `linear-gradient(210deg, transparent 62%, ${club.secondary} 62%)`,
+              opacity: 0.95,
+            }}
+          />
+          <span style={{ position: "relative" }}>{club.abbr}</span>
+        </>
+      )}
     </span>
+  );
+}
+
+/** The same crest at poster scale, sitting behind a card as texture. */
+export function CrestWatermark({
+  name,
+  size = 180,
+  style,
+}: {
+  name: string | null | undefined;
+  size?: number;
+  style?: CSSProperties;
+}) {
+  const media = teamMedia(name);
+  if (!media?.badge) return null;
+  return (
+    <img
+      className="watermark"
+      src={media.badge}
+      alt=""
+      aria-hidden
+      loading="lazy"
+      decoding="async"
+      style={{ width: size, height: size, objectFit: "contain", ...style }}
+    />
   );
 }
 
@@ -73,6 +128,32 @@ export function CompetitionMark({
 }) {
   const c = competitionIdentity(competition);
   const { bg, ink } = readableFill(c.accent);
+  const media = competitionMedia(c.key);
+  const [emblemOk, setEmblemOk] = useState(Boolean(media?.badge));
+
+  if (emblemOk && media?.badge) {
+    return (
+      <img
+        src={media.badge}
+        alt=""
+        aria-hidden
+        title={c.name}
+        width={size}
+        height={size}
+        loading="lazy"
+        decoding="async"
+        onError={() => setEmblemOk(false)}
+        style={{
+          width: size,
+          height: size,
+          flex: "none",
+          objectFit: "contain",
+          filter: "drop-shadow(0 2px 6px rgb(0 0 0 / 0.6))",
+        }}
+      />
+    );
+  }
+
   return (
     <span
       aria-hidden
@@ -107,7 +188,15 @@ export function CompetitionMark({
   );
 }
 
-/** A competition section opener, in the competition's own colour. */
+/**
+ * A competition section opener.
+ *
+ * Real competition photography where we resolved some, the generated floodlit
+ * treatment where we did not, and the emblem either way. It is a broadcast
+ * slab rather than a bordered box: the one shape on the site that is not a
+ * rounded rectangle, so a section break reads as a graphic rather than as
+ * another card.
+ */
 export function CompetitionHeader({
   competition,
   right,
@@ -116,26 +205,45 @@ export function CompetitionHeader({
   right?: ReactNode;
 }) {
   const c = competitionIdentity(competition);
+  const photo = competitionPhoto(c.key);
   return (
     <div
-      className="row"
+      className={photo ? "photo photo-flat" : undefined}
       style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
         gap: "var(--s-3)",
-        flexWrap: "nowrap",
+        minHeight: 76,
         padding: "var(--s-3) var(--s-4)",
         borderRadius: "var(--r-2)",
-        borderLeft: "none",
-        ...competitionSurface(c),
+        overflow: "hidden",
+        ...(photo ? {} : competitionSurface(c, 0.6)),
       }}
     >
-      <div className="cluster" style={{ gap: "var(--s-3)", flexWrap: "nowrap", minWidth: 0 }}>
-        <CompetitionMark competition={competition} size={30} />
+      {photo && <img src={photo} alt="" aria-hidden loading="lazy" decoding="async" />}
+      {/* The competition's colour as a hard edge down the leading side, so the
+          section is placeable at a glance even when the photograph is not. */}
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 5,
+          background: c.accent,
+          boxShadow: `0 0 22px -2px ${c.accent}`,
+        }}
+      />
+      <div className="cluster" style={{ gap: "var(--s-3)", flexWrap: "nowrap", minWidth: 0, position: "relative" }}>
+        <CompetitionMark competition={competition} size={34} />
         <div style={{ minWidth: 0 }}>
           <div
             className="cond"
             style={{
               fontWeight: 700,
-              fontSize: "1.0625rem",
+              fontSize: "1.1875rem",
               letterSpacing: "0.04em",
               textTransform: "uppercase",
               whiteSpace: "nowrap",
@@ -150,7 +258,7 @@ export function CompetitionHeader({
           )}
         </div>
       </div>
-      {right}
+      <div style={{ position: "relative" }}>{right}</div>
     </div>
   );
 }

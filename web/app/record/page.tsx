@@ -10,6 +10,7 @@ import {
 import { Empty, Loading, Notice, Result, Signed, Stat } from "@/components/ui";
 import { CompetitionMark } from "@/components/sport";
 import UnitsChart from "@/components/UnitsChart";
+import PageHead from "@/components/PageHead";
 
 /**
  * The track record.
@@ -86,11 +87,16 @@ export default function RecordPage() {
   }
 
   return (
-    <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
+    <>
+      <PageHead
+        eyebrow="Every settled pick"
+        title="The record"
+        lede="Published in full, losses included. Rates stay withheld until the sample is big enough to mean anything."
+        photoFrom="ucl"
+      />
+      <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
       <div className="row">
-        <h1 className="poster" style={{ fontSize: "clamp(2rem, 1.5rem + 2.4vw, 3.25rem)" }}>
-          The record
-        </h1>
+        <span className="label">Filter</span>
         {sports.length > 1 && (
           <div className="seg" role="group" aria-label="Filter by sport">
             {["all", ...sports].map((s) => (
@@ -199,7 +205,8 @@ export default function RecordPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

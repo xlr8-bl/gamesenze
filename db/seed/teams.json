@@ -1,1183 +1,1185 @@
 {
-  "_note": "Canonical teams plus the spellings we expect to meet in the wild. Seeded for every source; whatever a source actually sends that is missing here lands in unresolved_team_names and is confirmed by a human via `python -m gamesenze.jobs.aliases backlog`. The seed is a head start, not a claim to be exhaustive.",
-  "competitions": [
-    {
-      "sport": "football",
-      "name": "Premier League",
-      "country": "England",
-      "tier": 1
-    },
-    {
-      "sport": "football",
-      "name": "La Liga",
-      "country": "Spain",
-      "tier": 1
-    },
-    {
-      "sport": "football",
-      "name": "Serie A",
-      "country": "Italy",
-      "tier": 1
-    }
-  ],
-  "teams": [
-    {
-      "canonical": "Arsenal",
-      "country": "England",
-      "variants": [
-        "Arsenal FC",
-        "Arsenal London"
-      ]
-    },
-    {
-      "canonical": "Aston Villa",
-      "country": "England",
-      "variants": [
-        "Aston Villa FC",
-        "Villa"
-      ]
-    },
-    {
-      "canonical": "Bournemouth",
-      "country": "England",
-      "variants": [
-        "AFC Bournemouth"
-      ]
-    },
-    {
-      "canonical": "Brentford",
-      "country": "England",
-      "variants": [
-        "Brentford FC"
-      ]
-    },
-    {
-      "canonical": "Brighton & Hove Albion",
-      "country": "England",
-      "variants": [
-        "Brighton",
-        "Brighton and Hove Albion",
-        "Brighton Hove Albion",
-        "Brighton & Hove Albion FC"
-      ]
-    },
-    {
-      "canonical": "Chelsea",
-      "country": "England",
-      "variants": [
-        "Chelsea FC"
-      ]
-    },
-    {
-      "canonical": "Crystal Palace",
-      "country": "England",
-      "variants": [
-        "Crystal Palace FC"
-      ]
-    },
-    {
-      "canonical": "Everton",
-      "country": "England",
-      "variants": [
-        "Everton FC"
-      ]
-    },
-    {
-      "canonical": "Fulham",
-      "country": "England",
-      "variants": [
-        "Fulham FC"
-      ]
-    },
-    {
-      "canonical": "Ipswich Town",
-      "country": "England",
-      "variants": [
-        "Ipswich",
-        "Ipswich Town FC"
-      ]
-    },
-    {
-      "canonical": "Leicester City",
-      "country": "England",
-      "variants": [
-        "Leicester"
-      ]
-    },
-    {
-      "canonical": "Liverpool",
-      "country": "England",
-      "variants": [
-        "Liverpool FC"
-      ]
-    },
-    {
-      "canonical": "Manchester City",
-      "country": "England",
-      "variants": [
-        "Man City",
-        "Manchester City FC"
-      ]
-    },
-    {
-      "canonical": "Manchester United",
-      "country": "England",
-      "variants": [
-        "Man Utd",
-        "Man United",
-        "Manchester Utd",
-        "Manchester United FC"
-      ]
-    },
-    {
-      "canonical": "Newcastle United",
-      "country": "England",
-      "variants": [
-        "Newcastle",
-        "Newcastle Utd",
-        "Newcastle United FC"
-      ]
-    },
-    {
-      "canonical": "Nottingham Forest",
-      "country": "England",
-      "variants": [
-        "Nott'ham Forest",
-        "Notts Forest",
-        "Nottm Forest",
-        "Nottingham Forest FC"
-      ]
-    },
-    {
-      "canonical": "Southampton",
-      "country": "England",
-      "variants": [
-        "Southampton FC"
-      ]
-    },
-    {
-      "canonical": "Tottenham Hotspur",
-      "country": "England",
-      "variants": [
-        "Tottenham",
-        "Spurs",
-        "Tottenham Hotspur FC"
-      ]
-    },
-    {
-      "canonical": "West Ham United",
-      "country": "England",
-      "variants": [
-        "West Ham",
-        "West Ham United FC"
-      ]
-    },
-    {
-      "canonical": "Wolverhampton Wanderers",
-      "country": "England",
-      "variants": [
-        "Wolves",
-        "Wolverhampton",
-        "Wolverhampton Wanderers FC"
-      ]
-    },
-    {
-      "canonical": "Athletic Club",
-      "country": "Spain",
-      "variants": [
-        "Athletic Bilbao",
-        "Athletic Club Bilbao"
-      ]
-    },
-    {
-      "canonical": "Atlético Madrid",
-      "country": "Spain",
-      "variants": [
-        "Atletico Madrid",
-        "Atlético de Madrid",
-        "Atl. Madrid",
-        "Club Atletico de Madrid",
-        "Club Atlético de Madrid"
-      ]
-    },
-    {
-      "canonical": "Barcelona",
-      "country": "Spain",
-      "variants": [
-        "FC Barcelona",
-        "Barca",
-        "Barça"
-      ]
-    },
-    {
-      "canonical": "Celta Vigo",
-      "country": "Spain",
-      "variants": [
-        "Celta de Vigo",
-        "RC Celta",
-        "RC Celta de Vigo"
-      ]
-    },
-    {
-      "canonical": "Espanyol",
-      "country": "Spain",
-      "variants": [
-        "RCD Espanyol",
-        "Espanyol Barcelona",
-        "RCD Espanyol de Barcelona"
-      ]
-    },
-    {
-      "canonical": "Getafe",
-      "country": "Spain",
-      "variants": [
-        "Getafe CF"
-      ]
-    },
-    {
-      "canonical": "Girona",
-      "country": "Spain",
-      "variants": [
-        "Girona FC"
-      ]
-    },
-    {
-      "canonical": "Mallorca",
-      "country": "Spain",
-      "variants": [
-        "RCD Mallorca"
-      ]
-    },
-    {
-      "canonical": "Osasuna",
-      "country": "Spain",
-      "variants": [
-        "CA Osasuna"
-      ]
-    },
-    {
-      "canonical": "Rayo Vallecano",
-      "country": "Spain",
-      "variants": [
-        "Rayo",
-        "Rayo Vallecano de Madrid"
-      ]
-    },
-    {
-      "canonical": "Real Betis",
-      "country": "Spain",
-      "variants": [
-        "Betis",
-        "Real Betis Balompie",
-        "Real Betis Balompié"
-      ]
-    },
-    {
-      "canonical": "Real Madrid",
-      "country": "Spain",
-      "variants": [
-        "Real Madrid CF"
-      ]
-    },
-    {
-      "canonical": "Real Sociedad",
-      "country": "Spain",
-      "variants": [
-        "Sociedad",
-        "Real Sociedad de Futbol",
-        "Real Sociedad de Fútbol"
-      ]
-    },
-    {
-      "canonical": "Sevilla",
-      "country": "Spain",
-      "variants": [
-        "Sevilla FC"
-      ]
-    },
-    {
-      "canonical": "Valencia",
-      "country": "Spain",
-      "variants": [
-        "Valencia CF"
-      ]
-    },
-    {
-      "canonical": "Villarreal",
-      "country": "Spain",
-      "variants": [
-        "Villarreal CF"
-      ]
-    },
-    {
-      "canonical": "Atalanta",
-      "country": "Italy",
-      "variants": [
-        "Atalanta BC",
-        "Atalanta Bergamo"
-      ]
-    },
-    {
-      "canonical": "Bologna",
-      "country": "Italy",
-      "variants": [
-        "Bologna FC",
-        "Bologna FC 1909"
-      ]
-    },
-    {
-      "canonical": "Cagliari",
-      "country": "Italy",
-      "variants": [
-        "Cagliari Calcio"
-      ]
-    },
-    {
-      "canonical": "Como",
-      "country": "Italy",
-      "variants": [
-        "Como 1907"
-      ]
-    },
-    {
-      "canonical": "Empoli",
-      "country": "Italy",
-      "variants": [
-        "Empoli FC"
-      ]
-    },
-    {
-      "canonical": "Fiorentina",
-      "country": "Italy",
-      "variants": [
-        "ACF Fiorentina"
-      ]
-    },
-    {
-      "canonical": "Genoa",
-      "country": "Italy",
-      "variants": [
-        "Genoa CFC"
-      ]
-    },
-    {
-      "canonical": "Hellas Verona",
-      "country": "Italy",
-      "variants": [
-        "Verona",
-        "Hellas Verona FC"
-      ]
-    },
-    {
-      "canonical": "Internazionale",
-      "country": "Italy",
-      "variants": [
-        "Inter",
-        "Inter Milan",
-        "FC Internazionale",
-        "FC Internazionale Milano"
-      ]
-    },
-    {
-      "canonical": "Juventus",
-      "country": "Italy",
-      "variants": [
-        "Juventus FC",
-        "Juve"
-      ]
-    },
-    {
-      "canonical": "Lazio",
-      "country": "Italy",
-      "variants": [
-        "SS Lazio"
-      ]
-    },
-    {
-      "canonical": "Lecce",
-      "country": "Italy",
-      "variants": [
-        "US Lecce"
-      ]
-    },
-    {
-      "canonical": "AC Milan",
-      "country": "Italy",
-      "variants": [
-        "Milan",
-        "Associazione Calcio Milan"
-      ]
-    },
-    {
-      "canonical": "Napoli",
-      "country": "Italy",
-      "variants": [
-        "SSC Napoli"
-      ]
-    },
-    {
-      "canonical": "Parma",
-      "country": "Italy",
-      "variants": [
-        "Parma Calcio",
-        "Parma Calcio 1913"
-      ]
-    },
-    {
-      "canonical": "Roma",
-      "country": "Italy",
-      "variants": [
-        "AS Roma"
-      ]
-    },
-    {
-      "canonical": "Torino",
-      "country": "Italy",
-      "variants": [
-        "Torino FC"
-      ]
-    },
-    {
-      "canonical": "Udinese",
-      "country": "Italy",
-      "variants": [
-        "Udinese Calcio"
-      ]
-    },
-    {
-      "canonical": "Rennes",
-      "country": "France",
-      "variants": [
-        "Stade Rennais FC 1901",
-        "Stade Rennais"
-      ]
-    },
-    {
-      "canonical": "Paris Saint-Germain",
-      "country": "France",
-      "variants": [
-        "Paris Saint-Germain FC",
-        "PSG",
-        "Paris Saint Germain"
-      ]
-    },
-    {
-      "canonical": "Monaco",
-      "country": "France",
-      "variants": [
-        "AS Monaco FC",
-        "AS Monaco"
-      ]
-    },
-    {
-      "canonical": "Le Havre",
-      "country": "France",
-      "variants": [
-        "Le Havre AC"
-      ]
-    },
-    {
-      "canonical": "Lille",
-      "country": "France",
-      "variants": [
-        "Lille OSC"
-      ]
-    },
-    {
-      "canonical": "Angers",
-      "country": "France",
-      "variants": [
-        "Angers SCO"
-      ]
-    },
-    {
-      "canonical": "Lyon",
-      "country": "France",
-      "variants": [
-        "Olympique Lyonnais",
-        "OL"
-      ]
-    },
-    {
-      "canonical": "Toulouse",
-      "country": "France",
-      "variants": [
-        "Toulouse FC"
-      ]
-    },
-    {
-      "canonical": "Lorient",
-      "country": "France",
-      "variants": [
-        "FC Lorient"
-      ]
-    },
-    {
-      "canonical": "Nice",
-      "country": "France",
-      "variants": [
-        "OGC Nice"
-      ]
-    },
-    {
-      "canonical": "Paris FC",
-      "country": "France",
-      "variants": []
-    },
-    {
-      "canonical": "Troyes",
-      "country": "France",
-      "variants": [
-        "ES Troyes AC"
-      ]
-    },
-    {
-      "canonical": "Brest",
-      "country": "France",
-      "variants": [
-        "Stade Brestois 29"
-      ]
-    },
-    {
-      "canonical": "Le Mans",
-      "country": "France",
-      "variants": [
-        "Le Mans FC"
-      ]
-    },
-    {
-      "canonical": "Auxerre",
-      "country": "France",
-      "variants": [
-        "AJ Auxerre"
-      ]
-    },
-    {
-      "canonical": "Lens",
-      "country": "France",
-      "variants": [
-        "Racing Club de Lens",
-        "RC Lens"
-      ]
-    },
-    {
-      "canonical": "Strasbourg",
-      "country": "France",
-      "variants": [
-        "RC Strasbourg Alsace",
-        "RC Strasbourg"
-      ]
-    },
-    {
-      "canonical": "Marseille",
-      "country": "France",
-      "variants": [
-        "Olympique de Marseille",
-        "OM"
-      ]
-    },
-    {
-      "canonical": "Feyenoord",
-      "country": "Netherlands",
-      "variants": [
-        "Feyenoord Rotterdam"
-      ]
-    },
-    {
-      "canonical": "Cambuur",
-      "country": "Netherlands",
-      "variants": [
-        "SC Cambuur-Leeuwarden",
-        "SC Cambuur"
-      ]
-    },
-    {
-      "canonical": "Groningen",
-      "country": "Netherlands",
-      "variants": [
-        "FC Groningen"
-      ]
-    },
-    {
-      "canonical": "PSV Eindhoven",
-      "country": "Netherlands",
-      "variants": [
-        "PSV"
-      ]
-    },
-    {
-      "canonical": "ADO Den Haag",
-      "country": "Netherlands",
-      "variants": []
-    },
-    {
-      "canonical": "Go Ahead Eagles",
-      "country": "Netherlands",
-      "variants": []
-    },
-    {
-      "canonical": "PEC Zwolle",
-      "country": "Netherlands",
-      "variants": [
-        "FC Zwolle"
-      ]
-    },
-    {
-      "canonical": "Heerenveen",
-      "country": "Netherlands",
-      "variants": [
-        "SC Heerenveen"
-      ]
-    },
-    {
-      "canonical": "Utrecht",
-      "country": "Netherlands",
-      "variants": [
-        "FC Utrecht"
-      ]
-    },
-    {
-      "canonical": "Sparta Rotterdam",
-      "country": "Netherlands",
-      "variants": []
-    },
-    {
-      "canonical": "AZ Alkmaar",
-      "country": "Netherlands",
-      "variants": [
-        "AZ"
-      ]
-    },
-    {
-      "canonical": "Fortuna Sittard",
-      "country": "Netherlands",
-      "variants": []
-    },
-    {
-      "canonical": "Excelsior",
-      "country": "Netherlands",
-      "variants": [
-        "SBV Excelsior"
-      ]
-    },
-    {
-      "canonical": "NEC Nijmegen",
-      "country": "Netherlands",
-      "variants": [
-        "NEC"
-      ]
-    },
-    {
-      "canonical": "Casa Pia",
-      "country": "Portugal",
-      "variants": [
-        "Casa Pia AC"
-      ]
-    },
-    {
-      "canonical": "Gil Vicente",
-      "country": "Portugal",
-      "variants": [
-        "Gil Vicente FC"
-      ]
-    },
-    {
-      "canonical": "Arouca",
-      "country": "Portugal",
-      "variants": [
-        "FC Arouca"
-      ]
-    },
-    {
-      "canonical": "Porto",
-      "country": "Portugal",
-      "variants": [
-        "FC Porto"
-      ]
-    },
-    {
-      "canonical": "Famalicão",
-      "country": "Portugal",
-      "variants": [
-        "FC Famalicão"
-      ]
-    },
-    {
-      "canonical": "Santa Clara",
-      "country": "Portugal",
-      "variants": [
-        "CD Santa Clara"
-      ]
-    },
-    {
-      "canonical": "Nacional",
-      "country": "Portugal",
-      "variants": [
-        "CD Nacional"
-      ]
-    },
-    {
-      "canonical": "Vitória SC",
-      "country": "Portugal",
-      "variants": [
-        "Vitória de Guimarães"
-      ]
-    },
-    {
-      "canonical": "Alverca",
-      "country": "Portugal",
-      "variants": [
-        "FC Alverca"
-      ]
-    },
-    {
-      "canonical": "Sporting CP",
-      "country": "Portugal",
-      "variants": [
-        "Sporting Clube de Portugal",
-        "Sporting Lisbon"
-      ]
-    },
-    {
-      "canonical": "Rio Ave",
-      "country": "Portugal",
-      "variants": [
-        "Rio Ave FC"
-      ]
-    },
-    {
-      "canonical": "Estoril",
-      "country": "Portugal",
-      "variants": [
-        "GD Estoril Praia"
-      ]
-    },
-    {
-      "canonical": "Académico de Viseu",
-      "country": "Portugal",
-      "variants": [
-        "Académico de Viseu FC"
-      ]
-    },
-    {
-      "canonical": "Marítimo",
-      "country": "Portugal",
-      "variants": [
-        "CS Marítimo",
-        "CS Maritimo"
-      ]
-    },
-    {
-      "canonical": "Burnley",
-      "country": "England",
-      "variants": [
-        "Burnley FC"
-      ]
-    },
-    {
-      "canonical": "West Bromwich Albion",
-      "country": "England",
-      "variants": [
-        "West Bromwich Albion FC",
-        "West Brom"
-      ]
-    },
-    {
-      "canonical": "Bolton Wanderers",
-      "country": "England",
-      "variants": [
-        "Bolton Wanderers FC"
-      ]
-    },
-    {
-      "canonical": "Queens Park Rangers",
-      "country": "England",
-      "variants": [
-        "Queens Park Rangers FC",
-        "QPR"
-      ]
-    },
-    {
-      "canonical": "Stoke City",
-      "country": "England",
-      "variants": [
-        "Stoke City FC"
-      ]
-    },
-    {
-      "canonical": "Middlesbrough",
-      "country": "England",
-      "variants": [
-        "Middlesbrough FC"
-      ]
-    },
-    {
-      "canonical": "Blackburn Rovers",
-      "country": "England",
-      "variants": [
-        "Blackburn Rovers FC"
-      ]
-    },
-    {
-      "canonical": "Watford",
-      "country": "England",
-      "variants": [
-        "Watford FC"
-      ]
-    },
-    {
-      "canonical": "Wrexham",
-      "country": "England",
-      "variants": [
-        "Wrexham AFC"
-      ]
-    },
-    {
-      "canonical": "Preston North End",
-      "country": "England",
-      "variants": [
-        "Preston North End FC"
-      ]
-    },
-    {
-      "canonical": "Cardiff City",
-      "country": "England",
-      "variants": [
-        "Cardiff City FC"
-      ]
-    },
-    {
-      "canonical": "Derby County",
-      "country": "England",
-      "variants": [
-        "Derby County FC"
-      ]
-    },
-    {
-      "canonical": "Charlton Athletic",
-      "country": "England",
-      "variants": [
-        "Charlton Athletic FC"
-      ]
-    },
-    {
-      "canonical": "Sheffield United",
-      "country": "England",
-      "variants": [
-        "Sheffield United FC"
-      ]
-    },
-    {
-      "canonical": "Swansea City",
-      "country": "England",
-      "variants": [
-        "Swansea City AFC"
-      ]
-    },
-    {
-      "canonical": "Norwich City",
-      "country": "England",
-      "variants": [
-        "Norwich City FC"
-      ]
-    },
-    {
-      "canonical": "Millwall",
-      "country": "England",
-      "variants": [
-        "Millwall FC"
-      ]
-    },
-    {
-      "canonical": "Portsmouth",
-      "country": "England",
-      "variants": [
-        "Portsmouth FC"
-      ]
-    },
-    {
-      "canonical": "Lincoln City",
-      "country": "England",
-      "variants": [
-        "Lincoln City FC"
-      ]
-    },
-    {
-      "canonical": "Bristol City",
-      "country": "England",
-      "variants": [
-        "Bristol City FC"
-      ]
-    },
-    {
-      "canonical": "Birmingham City",
-      "country": "England",
-      "variants": [
-        "Birmingham City FC"
-      ]
-    },
-    {
-      "canonical": "Sunderland",
-      "country": "England",
-      "variants": [
-        "Sunderland AFC"
-      ]
-    },
-    {
-      "canonical": "Hull City",
-      "country": "England",
-      "variants": [
-        "Hull City AFC"
-      ]
-    },
-    {
-      "canonical": "Coventry City",
-      "country": "England",
-      "variants": [
-        "Coventry City FC"
-      ]
-    },
-    {
-      "canonical": "Leeds United",
-      "country": "England",
-      "variants": [
-        "Leeds United FC",
-        "Leeds"
-      ]
-    },
-    {
-      "canonical": "Levante",
-      "country": "Spain",
-      "variants": [
-        "Levante UD"
-      ]
-    },
-    {
-      "canonical": "Málaga",
-      "country": "Spain",
-      "variants": [
-        "Málaga CF"
-      ]
-    },
-    {
-      "canonical": "Deportivo La Coruña",
-      "country": "Spain",
-      "variants": [
-        "RC Deportivo La Coruña",
-        "Deportivo de La Coruña"
-      ]
-    },
-    {
-      "canonical": "Racing Santander",
-      "country": "Spain",
-      "variants": [
-        "Real Racing Club de Santander",
-        "Racing de Santander"
-      ]
-    },
-    {
-      "canonical": "Deportivo Alavés",
-      "country": "Spain",
-      "variants": [
-        "Deportivo Alaves",
-        "Alavés",
-        "Alaves"
-      ]
-    },
-    {
-      "canonical": "Elche",
-      "country": "Spain",
-      "variants": [
-        "Elche CF"
-      ]
-    },
-    {
-      "canonical": "Monza",
-      "country": "Italy",
-      "variants": [
-        "AC Monza"
-      ]
-    },
-    {
-      "canonical": "Frosinone",
-      "country": "Italy",
-      "variants": [
-        "Frosinone Calcio"
-      ]
-    },
-    {
-      "canonical": "Venezia",
-      "country": "Italy",
-      "variants": [
-        "Venezia FC"
-      ]
-    },
-    {
-      "canonical": "Sassuolo",
-      "country": "Italy",
-      "variants": [
-        "US Sassuolo Calcio"
-      ]
-    },
-    {
-      "canonical": "Cremonese",
-      "country": "Italy",
-      "variants": []
-    },
-    {
-      "canonical": "Pisa",
-      "country": "Italy",
-      "variants": []
-    },
-    {
-      "canonical": "Real Oviedo",
-      "country": "Spain",
-      "variants": []
-    },
-    {
-      "canonical": "Benfica",
-      "country": "Portugal",
-      "variants": [
-        "SL Benfica"
-      ]
-    },
-    {
-      "canonical": "Moreirense",
-      "country": "Portugal",
-      "variants": [
-        "Moreirense FC"
-      ]
-    },
-    {
-      "canonical": "Bayern Munich",
-      "country": "Germany",
-      "variants": []
-    },
-    {
-      "canonical": "VfB Stuttgart",
-      "country": "Germany",
-      "variants": []
-    },
-    {
-      "canonical": "1. FC Köln",
-      "country": "Germany",
-      "variants": [
-        "1. FC Koln",
-        "FC Koln",
-        "FC Köln"
-      ]
-    },
-    {
-      "canonical": "TSG Hoffenheim",
-      "country": "Germany",
-      "variants": [
-        "Hoffenheim"
-      ]
-    },
-    {
-      "canonical": "Elversberg",
-      "country": "Germany",
-      "variants": [
-        "SV Elversberg"
-      ]
-    },
-    {
-      "canonical": "Bayer Leverkusen",
-      "country": "Germany",
-      "variants": [
-        "Leverkusen"
-      ]
-    },
-    {
-      "canonical": "RB Leipzig",
-      "country": "Germany",
-      "variants": []
-    },
-    {
-      "canonical": "Borussia Monchengladbach",
-      "country": "Germany",
-      "variants": [
-        "Borussia Mönchengladbach",
-        "Monchengladbach"
-      ]
-    },
-    {
-      "canonical": "Union Berlin",
-      "country": "Germany",
-      "variants": [
-        "1. FC Union Berlin"
-      ]
-    },
-    {
-      "canonical": "Eintracht Frankfurt",
-      "country": "Germany",
-      "variants": []
-    },
-    {
-      "canonical": "FSV Mainz 05",
-      "country": "Germany",
-      "variants": [
-        "Mainz 05",
-        "Mainz"
-      ]
-    },
-    {
-      "canonical": "SC Paderborn",
-      "country": "Germany",
-      "variants": [
-        "Paderborn"
-      ]
-    },
-    {
-      "canonical": "Borussia Dortmund",
-      "country": "Germany",
-      "variants": [
-        "Dortmund"
-      ]
-    },
-    {
-      "canonical": "Hamburger SV",
-      "country": "Germany",
-      "variants": [
-        "Hamburg"
-      ]
-    },
-    {
-      "canonical": "SC Freiburg",
-      "country": "Germany",
-      "variants": [
-        "Freiburg"
-      ]
-    },
-    {
-      "canonical": "Werder Bremen",
-      "country": "Germany",
-      "variants": []
-    },
-    {
-      "canonical": "Augsburg",
-      "country": "Germany",
-      "variants": [
-        "FC Augsburg"
-      ]
-    },
-    {
-      "canonical": "FC Schalke 04",
-      "country": "Germany",
-      "variants": [
-        "Schalke 04",
-        "Schalke"
-      ]
-    }
-  ],
-  "sources": [
-    "api_football",
-    "fbref",
-    "understat",
-    "sofifa",
-    "sportsgameodds",
-    "transfermarkt",
-    "football_data",
-    "odds_api"
-  ]
+ "_note": "Canonical teams plus the spellings we expect to meet in the wild. Seeded for every source; whatever a source actually sends that is missing here lands in unresolved_team_names and is confirmed by a human via `python -m gamesenze.jobs.aliases backlog`. The seed is a head start, not a claim to be exhaustive.",
+ "competitions": [
+  {
+   "sport": "football",
+   "name": "Premier League",
+   "country": "England",
+   "tier": 1
+  },
+  {
+   "sport": "football",
+   "name": "La Liga",
+   "country": "Spain",
+   "tier": 1
+  },
+  {
+   "sport": "football",
+   "name": "Serie A",
+   "country": "Italy",
+   "tier": 1
+  }
+ ],
+ "teams": [
+  {
+   "canonical": "Arsenal",
+   "country": "England",
+   "variants": [
+    "Arsenal FC",
+    "Arsenal London"
+   ]
+  },
+  {
+   "canonical": "Aston Villa",
+   "country": "England",
+   "variants": [
+    "Aston Villa FC",
+    "Villa"
+   ]
+  },
+  {
+   "canonical": "Bournemouth",
+   "country": "England",
+   "variants": [
+    "AFC Bournemouth"
+   ]
+  },
+  {
+   "canonical": "Brentford",
+   "country": "England",
+   "variants": [
+    "Brentford FC"
+   ]
+  },
+  {
+   "canonical": "Brighton & Hove Albion",
+   "country": "England",
+   "variants": [
+    "Brighton",
+    "Brighton and Hove Albion",
+    "Brighton Hove Albion",
+    "Brighton & Hove Albion FC"
+   ]
+  },
+  {
+   "canonical": "Chelsea",
+   "country": "England",
+   "variants": [
+    "Chelsea FC"
+   ]
+  },
+  {
+   "canonical": "Crystal Palace",
+   "country": "England",
+   "variants": [
+    "Crystal Palace FC"
+   ]
+  },
+  {
+   "canonical": "Everton",
+   "country": "England",
+   "variants": [
+    "Everton FC"
+   ]
+  },
+  {
+   "canonical": "Fulham",
+   "country": "England",
+   "variants": [
+    "Fulham FC"
+   ]
+  },
+  {
+   "canonical": "Ipswich Town",
+   "country": "England",
+   "variants": [
+    "Ipswich",
+    "Ipswich Town FC"
+   ]
+  },
+  {
+   "canonical": "Leicester City",
+   "country": "England",
+   "variants": [
+    "Leicester"
+   ]
+  },
+  {
+   "canonical": "Liverpool",
+   "country": "England",
+   "variants": [
+    "Liverpool FC"
+   ]
+  },
+  {
+   "canonical": "Manchester City",
+   "country": "England",
+   "variants": [
+    "Man City",
+    "Manchester City FC"
+   ]
+  },
+  {
+   "canonical": "Manchester United",
+   "country": "England",
+   "variants": [
+    "Man Utd",
+    "Man United",
+    "Manchester Utd",
+    "Manchester United FC"
+   ]
+  },
+  {
+   "canonical": "Newcastle United",
+   "country": "England",
+   "variants": [
+    "Newcastle",
+    "Newcastle Utd",
+    "Newcastle United FC"
+   ]
+  },
+  {
+   "canonical": "Nottingham Forest",
+   "country": "England",
+   "variants": [
+    "Nott'ham Forest",
+    "Notts Forest",
+    "Nottm Forest",
+    "Nottingham Forest FC"
+   ]
+  },
+  {
+   "canonical": "Southampton",
+   "country": "England",
+   "variants": [
+    "Southampton FC"
+   ]
+  },
+  {
+   "canonical": "Tottenham Hotspur",
+   "country": "England",
+   "variants": [
+    "Tottenham",
+    "Spurs",
+    "Tottenham Hotspur FC"
+   ]
+  },
+  {
+   "canonical": "West Ham United",
+   "country": "England",
+   "variants": [
+    "West Ham",
+    "West Ham United FC"
+   ]
+  },
+  {
+   "canonical": "Wolverhampton Wanderers",
+   "country": "England",
+   "variants": [
+    "Wolves",
+    "Wolverhampton",
+    "Wolverhampton Wanderers FC"
+   ]
+  },
+  {
+   "canonical": "Athletic Club",
+   "country": "Spain",
+   "variants": [
+    "Athletic Bilbao",
+    "Athletic Club Bilbao"
+   ]
+  },
+  {
+   "canonical": "Atlético Madrid",
+   "country": "Spain",
+   "variants": [
+    "Atletico Madrid",
+    "Atlético de Madrid",
+    "Atl. Madrid",
+    "Club Atletico de Madrid",
+    "Club Atlético de Madrid"
+   ]
+  },
+  {
+   "canonical": "Barcelona",
+   "country": "Spain",
+   "variants": [
+    "FC Barcelona",
+    "Barca",
+    "Barça"
+   ]
+  },
+  {
+   "canonical": "Celta Vigo",
+   "country": "Spain",
+   "variants": [
+    "Celta de Vigo",
+    "RC Celta",
+    "RC Celta de Vigo"
+   ]
+  },
+  {
+   "canonical": "Espanyol",
+   "country": "Spain",
+   "variants": [
+    "RCD Espanyol",
+    "Espanyol Barcelona",
+    "RCD Espanyol de Barcelona"
+   ]
+  },
+  {
+   "canonical": "Getafe",
+   "country": "Spain",
+   "variants": [
+    "Getafe CF"
+   ]
+  },
+  {
+   "canonical": "Girona",
+   "country": "Spain",
+   "variants": [
+    "Girona FC"
+   ]
+  },
+  {
+   "canonical": "Mallorca",
+   "country": "Spain",
+   "variants": [
+    "RCD Mallorca"
+   ]
+  },
+  {
+   "canonical": "Osasuna",
+   "country": "Spain",
+   "variants": [
+    "CA Osasuna"
+   ]
+  },
+  {
+   "canonical": "Rayo Vallecano",
+   "country": "Spain",
+   "variants": [
+    "Rayo",
+    "Rayo Vallecano de Madrid"
+   ]
+  },
+  {
+   "canonical": "Real Betis",
+   "country": "Spain",
+   "variants": [
+    "Betis",
+    "Real Betis Balompie",
+    "Real Betis Balompié"
+   ]
+  },
+  {
+   "canonical": "Real Madrid",
+   "country": "Spain",
+   "variants": [
+    "Real Madrid CF"
+   ]
+  },
+  {
+   "canonical": "Real Sociedad",
+   "country": "Spain",
+   "variants": [
+    "Sociedad",
+    "Real Sociedad de Futbol",
+    "Real Sociedad de Fútbol"
+   ]
+  },
+  {
+   "canonical": "Sevilla",
+   "country": "Spain",
+   "variants": [
+    "Sevilla FC"
+   ]
+  },
+  {
+   "canonical": "Valencia",
+   "country": "Spain",
+   "variants": [
+    "Valencia CF"
+   ]
+  },
+  {
+   "canonical": "Villarreal",
+   "country": "Spain",
+   "variants": [
+    "Villarreal CF"
+   ]
+  },
+  {
+   "canonical": "Atalanta",
+   "country": "Italy",
+   "variants": [
+    "Atalanta BC",
+    "Atalanta Bergamo"
+   ]
+  },
+  {
+   "canonical": "Bologna",
+   "country": "Italy",
+   "variants": [
+    "Bologna FC",
+    "Bologna FC 1909"
+   ]
+  },
+  {
+   "canonical": "Cagliari",
+   "country": "Italy",
+   "variants": [
+    "Cagliari Calcio"
+   ]
+  },
+  {
+   "canonical": "Como",
+   "country": "Italy",
+   "variants": [
+    "Como 1907"
+   ]
+  },
+  {
+   "canonical": "Empoli",
+   "country": "Italy",
+   "variants": [
+    "Empoli FC"
+   ]
+  },
+  {
+   "canonical": "Fiorentina",
+   "country": "Italy",
+   "variants": [
+    "ACF Fiorentina"
+   ]
+  },
+  {
+   "canonical": "Genoa",
+   "country": "Italy",
+   "variants": [
+    "Genoa CFC"
+   ]
+  },
+  {
+   "canonical": "Hellas Verona",
+   "country": "Italy",
+   "variants": [
+    "Verona",
+    "Hellas Verona FC"
+   ]
+  },
+  {
+   "canonical": "Internazionale",
+   "country": "Italy",
+   "variants": [
+    "Inter",
+    "Inter Milan",
+    "FC Internazionale",
+    "FC Internazionale Milano"
+   ]
+  },
+  {
+   "canonical": "Juventus",
+   "country": "Italy",
+   "variants": [
+    "Juventus FC",
+    "Juve"
+   ]
+  },
+  {
+   "canonical": "Lazio",
+   "country": "Italy",
+   "variants": [
+    "SS Lazio"
+   ]
+  },
+  {
+   "canonical": "Lecce",
+   "country": "Italy",
+   "variants": [
+    "US Lecce"
+   ]
+  },
+  {
+   "canonical": "AC Milan",
+   "country": "Italy",
+   "variants": [
+    "Milan",
+    "Associazione Calcio Milan"
+   ]
+  },
+  {
+   "canonical": "Napoli",
+   "country": "Italy",
+   "variants": [
+    "SSC Napoli"
+   ]
+  },
+  {
+   "canonical": "Parma",
+   "country": "Italy",
+   "variants": [
+    "Parma Calcio",
+    "Parma Calcio 1913"
+   ]
+  },
+  {
+   "canonical": "Roma",
+   "country": "Italy",
+   "variants": [
+    "AS Roma"
+   ]
+  },
+  {
+   "canonical": "Torino",
+   "country": "Italy",
+   "variants": [
+    "Torino FC"
+   ]
+  },
+  {
+   "canonical": "Udinese",
+   "country": "Italy",
+   "variants": [
+    "Udinese Calcio"
+   ]
+  },
+  {
+   "canonical": "Rennes",
+   "country": "France",
+   "variants": [
+    "Stade Rennais FC 1901",
+    "Stade Rennais"
+   ]
+  },
+  {
+   "canonical": "Paris Saint-Germain",
+   "country": "France",
+   "variants": [
+    "Paris Saint-Germain FC",
+    "PSG",
+    "Paris Saint Germain"
+   ]
+  },
+  {
+   "canonical": "Monaco",
+   "country": "France",
+   "variants": [
+    "AS Monaco FC",
+    "AS Monaco"
+   ]
+  },
+  {
+   "canonical": "Le Havre",
+   "country": "France",
+   "variants": [
+    "Le Havre AC"
+   ]
+  },
+  {
+   "canonical": "Lille",
+   "country": "France",
+   "variants": [
+    "Lille OSC"
+   ]
+  },
+  {
+   "canonical": "Angers",
+   "country": "France",
+   "variants": [
+    "Angers SCO"
+   ]
+  },
+  {
+   "canonical": "Lyon",
+   "country": "France",
+   "variants": [
+    "Olympique Lyonnais",
+    "OL"
+   ]
+  },
+  {
+   "canonical": "Toulouse",
+   "country": "France",
+   "variants": [
+    "Toulouse FC"
+   ]
+  },
+  {
+   "canonical": "Lorient",
+   "country": "France",
+   "variants": [
+    "FC Lorient"
+   ]
+  },
+  {
+   "canonical": "Nice",
+   "country": "France",
+   "variants": [
+    "OGC Nice"
+   ]
+  },
+  {
+   "canonical": "Paris FC",
+   "country": "France",
+   "variants": []
+  },
+  {
+   "canonical": "Troyes",
+   "country": "France",
+   "variants": [
+    "ES Troyes AC"
+   ]
+  },
+  {
+   "canonical": "Brest",
+   "country": "France",
+   "variants": [
+    "Stade Brestois 29"
+   ]
+  },
+  {
+   "canonical": "Le Mans",
+   "country": "France",
+   "variants": [
+    "Le Mans FC"
+   ]
+  },
+  {
+   "canonical": "Auxerre",
+   "country": "France",
+   "variants": [
+    "AJ Auxerre"
+   ]
+  },
+  {
+   "canonical": "Lens",
+   "country": "France",
+   "variants": [
+    "Racing Club de Lens",
+    "RC Lens"
+   ]
+  },
+  {
+   "canonical": "Strasbourg",
+   "country": "France",
+   "variants": [
+    "RC Strasbourg Alsace",
+    "RC Strasbourg"
+   ]
+  },
+  {
+   "canonical": "Marseille",
+   "country": "France",
+   "variants": [
+    "Olympique de Marseille",
+    "OM"
+   ]
+  },
+  {
+   "canonical": "Feyenoord",
+   "country": "Netherlands",
+   "variants": [
+    "Feyenoord Rotterdam"
+   ]
+  },
+  {
+   "canonical": "Cambuur",
+   "country": "Netherlands",
+   "variants": [
+    "SC Cambuur-Leeuwarden",
+    "SC Cambuur"
+   ]
+  },
+  {
+   "canonical": "Groningen",
+   "country": "Netherlands",
+   "variants": [
+    "FC Groningen"
+   ]
+  },
+  {
+   "canonical": "PSV Eindhoven",
+   "country": "Netherlands",
+   "variants": [
+    "PSV"
+   ]
+  },
+  {
+   "canonical": "ADO Den Haag",
+   "country": "Netherlands",
+   "variants": []
+  },
+  {
+   "canonical": "Go Ahead Eagles",
+   "country": "Netherlands",
+   "variants": []
+  },
+  {
+   "canonical": "PEC Zwolle",
+   "country": "Netherlands",
+   "variants": [
+    "FC Zwolle"
+   ]
+  },
+  {
+   "canonical": "Heerenveen",
+   "country": "Netherlands",
+   "variants": [
+    "SC Heerenveen"
+   ]
+  },
+  {
+   "canonical": "Utrecht",
+   "country": "Netherlands",
+   "variants": [
+    "FC Utrecht"
+   ]
+  },
+  {
+   "canonical": "Sparta Rotterdam",
+   "country": "Netherlands",
+   "variants": []
+  },
+  {
+   "canonical": "AZ Alkmaar",
+   "country": "Netherlands",
+   "variants": [
+    "AZ"
+   ]
+  },
+  {
+   "canonical": "Fortuna Sittard",
+   "country": "Netherlands",
+   "variants": []
+  },
+  {
+   "canonical": "Excelsior",
+   "country": "Netherlands",
+   "variants": [
+    "SBV Excelsior"
+   ]
+  },
+  {
+   "canonical": "NEC Nijmegen",
+   "country": "Netherlands",
+   "variants": [
+    "NEC"
+   ]
+  },
+  {
+   "canonical": "Casa Pia",
+   "country": "Portugal",
+   "variants": [
+    "Casa Pia AC"
+   ]
+  },
+  {
+   "canonical": "Gil Vicente",
+   "country": "Portugal",
+   "variants": [
+    "Gil Vicente FC"
+   ]
+  },
+  {
+   "canonical": "Arouca",
+   "country": "Portugal",
+   "variants": [
+    "FC Arouca"
+   ]
+  },
+  {
+   "canonical": "Porto",
+   "country": "Portugal",
+   "variants": [
+    "FC Porto"
+   ]
+  },
+  {
+   "canonical": "Famalicão",
+   "country": "Portugal",
+   "variants": [
+    "FC Famalicão"
+   ]
+  },
+  {
+   "canonical": "Santa Clara",
+   "country": "Portugal",
+   "variants": [
+    "CD Santa Clara"
+   ]
+  },
+  {
+   "canonical": "Nacional",
+   "country": "Portugal",
+   "variants": [
+    "CD Nacional",
+    "Nacional de Madeira",
+    "Clube Desportivo Nacional"
+   ]
+  },
+  {
+   "canonical": "Vitória SC",
+   "country": "Portugal",
+   "variants": [
+    "Vitória de Guimarães"
+   ]
+  },
+  {
+   "canonical": "Alverca",
+   "country": "Portugal",
+   "variants": [
+    "FC Alverca"
+   ]
+  },
+  {
+   "canonical": "Sporting CP",
+   "country": "Portugal",
+   "variants": [
+    "Sporting Clube de Portugal",
+    "Sporting Lisbon"
+   ]
+  },
+  {
+   "canonical": "Rio Ave",
+   "country": "Portugal",
+   "variants": [
+    "Rio Ave FC"
+   ]
+  },
+  {
+   "canonical": "Estoril",
+   "country": "Portugal",
+   "variants": [
+    "GD Estoril Praia"
+   ]
+  },
+  {
+   "canonical": "Académico de Viseu",
+   "country": "Portugal",
+   "variants": [
+    "Académico de Viseu FC"
+   ]
+  },
+  {
+   "canonical": "Marítimo",
+   "country": "Portugal",
+   "variants": [
+    "CS Marítimo",
+    "CS Maritimo"
+   ]
+  },
+  {
+   "canonical": "Burnley",
+   "country": "England",
+   "variants": [
+    "Burnley FC"
+   ]
+  },
+  {
+   "canonical": "West Bromwich Albion",
+   "country": "England",
+   "variants": [
+    "West Bromwich Albion FC",
+    "West Brom"
+   ]
+  },
+  {
+   "canonical": "Bolton Wanderers",
+   "country": "England",
+   "variants": [
+    "Bolton Wanderers FC"
+   ]
+  },
+  {
+   "canonical": "Queens Park Rangers",
+   "country": "England",
+   "variants": [
+    "Queens Park Rangers FC",
+    "QPR"
+   ]
+  },
+  {
+   "canonical": "Stoke City",
+   "country": "England",
+   "variants": [
+    "Stoke City FC"
+   ]
+  },
+  {
+   "canonical": "Middlesbrough",
+   "country": "England",
+   "variants": [
+    "Middlesbrough FC"
+   ]
+  },
+  {
+   "canonical": "Blackburn Rovers",
+   "country": "England",
+   "variants": [
+    "Blackburn Rovers FC"
+   ]
+  },
+  {
+   "canonical": "Watford",
+   "country": "England",
+   "variants": [
+    "Watford FC"
+   ]
+  },
+  {
+   "canonical": "Wrexham",
+   "country": "England",
+   "variants": [
+    "Wrexham AFC"
+   ]
+  },
+  {
+   "canonical": "Preston North End",
+   "country": "England",
+   "variants": [
+    "Preston North End FC"
+   ]
+  },
+  {
+   "canonical": "Cardiff City",
+   "country": "England",
+   "variants": [
+    "Cardiff City FC"
+   ]
+  },
+  {
+   "canonical": "Derby County",
+   "country": "England",
+   "variants": [
+    "Derby County FC"
+   ]
+  },
+  {
+   "canonical": "Charlton Athletic",
+   "country": "England",
+   "variants": [
+    "Charlton Athletic FC"
+   ]
+  },
+  {
+   "canonical": "Sheffield United",
+   "country": "England",
+   "variants": [
+    "Sheffield United FC"
+   ]
+  },
+  {
+   "canonical": "Swansea City",
+   "country": "England",
+   "variants": [
+    "Swansea City AFC"
+   ]
+  },
+  {
+   "canonical": "Norwich City",
+   "country": "England",
+   "variants": [
+    "Norwich City FC"
+   ]
+  },
+  {
+   "canonical": "Millwall",
+   "country": "England",
+   "variants": [
+    "Millwall FC"
+   ]
+  },
+  {
+   "canonical": "Portsmouth",
+   "country": "England",
+   "variants": [
+    "Portsmouth FC"
+   ]
+  },
+  {
+   "canonical": "Lincoln City",
+   "country": "England",
+   "variants": [
+    "Lincoln City FC"
+   ]
+  },
+  {
+   "canonical": "Bristol City",
+   "country": "England",
+   "variants": [
+    "Bristol City FC"
+   ]
+  },
+  {
+   "canonical": "Birmingham City",
+   "country": "England",
+   "variants": [
+    "Birmingham City FC"
+   ]
+  },
+  {
+   "canonical": "Sunderland",
+   "country": "England",
+   "variants": [
+    "Sunderland AFC"
+   ]
+  },
+  {
+   "canonical": "Hull City",
+   "country": "England",
+   "variants": [
+    "Hull City AFC"
+   ]
+  },
+  {
+   "canonical": "Coventry City",
+   "country": "England",
+   "variants": [
+    "Coventry City FC"
+   ]
+  },
+  {
+   "canonical": "Leeds United",
+   "country": "England",
+   "variants": [
+    "Leeds United FC",
+    "Leeds"
+   ]
+  },
+  {
+   "canonical": "Levante",
+   "country": "Spain",
+   "variants": [
+    "Levante UD"
+   ]
+  },
+  {
+   "canonical": "Málaga",
+   "country": "Spain",
+   "variants": [
+    "Málaga CF"
+   ]
+  },
+  {
+   "canonical": "Deportivo La Coruña",
+   "country": "Spain",
+   "variants": [
+    "RC Deportivo La Coruña",
+    "Deportivo de La Coruña"
+   ]
+  },
+  {
+   "canonical": "Racing Santander",
+   "country": "Spain",
+   "variants": [
+    "Real Racing Club de Santander",
+    "Racing de Santander"
+   ]
+  },
+  {
+   "canonical": "Deportivo Alavés",
+   "country": "Spain",
+   "variants": [
+    "Deportivo Alaves",
+    "Alavés",
+    "Alaves"
+   ]
+  },
+  {
+   "canonical": "Elche",
+   "country": "Spain",
+   "variants": [
+    "Elche CF"
+   ]
+  },
+  {
+   "canonical": "Monza",
+   "country": "Italy",
+   "variants": [
+    "AC Monza"
+   ]
+  },
+  {
+   "canonical": "Frosinone",
+   "country": "Italy",
+   "variants": [
+    "Frosinone Calcio"
+   ]
+  },
+  {
+   "canonical": "Venezia",
+   "country": "Italy",
+   "variants": [
+    "Venezia FC"
+   ]
+  },
+  {
+   "canonical": "Sassuolo",
+   "country": "Italy",
+   "variants": [
+    "US Sassuolo Calcio"
+   ]
+  },
+  {
+   "canonical": "Cremonese",
+   "country": "Italy",
+   "variants": []
+  },
+  {
+   "canonical": "Pisa",
+   "country": "Italy",
+   "variants": []
+  },
+  {
+   "canonical": "Real Oviedo",
+   "country": "Spain",
+   "variants": []
+  },
+  {
+   "canonical": "Benfica",
+   "country": "Portugal",
+   "variants": [
+    "SL Benfica"
+   ]
+  },
+  {
+   "canonical": "Moreirense",
+   "country": "Portugal",
+   "variants": [
+    "Moreirense FC"
+   ]
+  },
+  {
+   "canonical": "Bayern Munich",
+   "country": "Germany",
+   "variants": []
+  },
+  {
+   "canonical": "VfB Stuttgart",
+   "country": "Germany",
+   "variants": []
+  },
+  {
+   "canonical": "1. FC Köln",
+   "country": "Germany",
+   "variants": [
+    "1. FC Koln",
+    "FC Koln",
+    "FC Köln"
+   ]
+  },
+  {
+   "canonical": "TSG Hoffenheim",
+   "country": "Germany",
+   "variants": [
+    "Hoffenheim"
+   ]
+  },
+  {
+   "canonical": "Elversberg",
+   "country": "Germany",
+   "variants": [
+    "SV Elversberg"
+   ]
+  },
+  {
+   "canonical": "Bayer Leverkusen",
+   "country": "Germany",
+   "variants": [
+    "Leverkusen"
+   ]
+  },
+  {
+   "canonical": "RB Leipzig",
+   "country": "Germany",
+   "variants": []
+  },
+  {
+   "canonical": "Borussia Monchengladbach",
+   "country": "Germany",
+   "variants": [
+    "Borussia Mönchengladbach",
+    "Monchengladbach"
+   ]
+  },
+  {
+   "canonical": "Union Berlin",
+   "country": "Germany",
+   "variants": [
+    "1. FC Union Berlin"
+   ]
+  },
+  {
+   "canonical": "Eintracht Frankfurt",
+   "country": "Germany",
+   "variants": []
+  },
+  {
+   "canonical": "FSV Mainz 05",
+   "country": "Germany",
+   "variants": [
+    "Mainz 05",
+    "Mainz"
+   ]
+  },
+  {
+   "canonical": "SC Paderborn",
+   "country": "Germany",
+   "variants": [
+    "Paderborn"
+   ]
+  },
+  {
+   "canonical": "Borussia Dortmund",
+   "country": "Germany",
+   "variants": [
+    "Dortmund"
+   ]
+  },
+  {
+   "canonical": "Hamburger SV",
+   "country": "Germany",
+   "variants": [
+    "Hamburg"
+   ]
+  },
+  {
+   "canonical": "SC Freiburg",
+   "country": "Germany",
+   "variants": [
+    "Freiburg"
+   ]
+  },
+  {
+   "canonical": "Werder Bremen",
+   "country": "Germany",
+   "variants": []
+  },
+  {
+   "canonical": "Augsburg",
+   "country": "Germany",
+   "variants": [
+    "FC Augsburg"
+   ]
+  },
+  {
+   "canonical": "FC Schalke 04",
+   "country": "Germany",
+   "variants": [
+    "Schalke 04",
+    "Schalke"
+   ]
+  }
+ ],
+ "sources": [
+  "api_football",
+  "fbref",
+  "understat",
+  "sofifa",
+  "sportsgameodds",
+  "transfermarkt",
+  "football_data",
+  "odds_api"
+ ]
 }

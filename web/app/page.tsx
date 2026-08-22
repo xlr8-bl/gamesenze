@@ -1,6 +1,7 @@
 import HomeLive from "@/components/HomeLive";
 import { Notice } from "@/components/ui";
 import { COMPETITIONS, competitionSurface } from "@/lib/identity";
+import { competitionPhoto } from "@/lib/media";
 import { CompetitionMark } from "@/components/sport";
 
 /**
@@ -10,6 +11,18 @@ import { CompetitionMark } from "@/components/sport";
  * competition's colours. Everything above the fold is live: if the board is
  * empty the hero says so rather than showing a stock headline over nothing.
  */
+/** The broadcast slab, used wherever a section opens. */
+function SectionHead({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", marginBottom: "var(--s-4)" }}>
+      <h2 className="slab slab-brand" style={{ fontSize: "1.25rem" }}>
+        {children}
+      </h2>
+      <span aria-hidden style={{ flex: 1, height: 1, background: "var(--line)" }} />
+    </div>
+  );
+}
+
 export default function Home() {
   return (
     <>
@@ -18,93 +31,92 @@ export default function Home() {
       {/* Competition rail. The calendar is the product's texture, so it gets
           its own band rather than a line of grey text. */}
       <section className="shell" style={{ paddingTop: "var(--s-7)" }}>
-        <div className="section-head">
-          <h2 className="cond" style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            What we cover
-          </h2>
-        </div>
+        <SectionHead>What we cover</SectionHead>
         <div className="rail">
-          {COMPETITIONS.map((c, i) => (
-            <div
-              key={c.key}
-              className="rise"
-              style={{
-                ...competitionSurface(c, 0.45),
-                ["--i" as string]: Math.min(i, 8),
-                borderRadius: "var(--r-3)",
-                border: "1px solid var(--line)",
-                padding: "var(--s-4)",
-                minWidth: 200,
-                minHeight: 120,
-                scrollSnapAlign: "start",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                gap: "var(--s-3)",
-              }}
-            >
-              <CompetitionMark competition={c.name} size={28} />
-              <div>
-                <div
-                  className="cond"
+          {COMPETITIONS.map((c, i) => {
+            const photo = competitionPhoto(c.key);
+            return (
+              <div
+                key={c.key}
+                className={`rise ${photo ? "photo photo-deep" : ""}`}
+                style={{
+                  ...(photo ? {} : competitionSurface(c, 0.45)),
+                  ["--i" as string]: Math.min(i, 8),
+                  borderRadius: "var(--r-3)",
+                  border: "1px solid var(--line)",
+                  padding: "var(--s-4)",
+                  minWidth: 210,
+                  minHeight: 150,
+                  scrollSnapAlign: "start",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  gap: "var(--s-3)",
+                  overflow: "hidden",
+                }}
+              >
+                {photo && <img src={photo} alt="" aria-hidden loading="lazy" decoding="async" />}
+                <span
+                  aria-hidden
                   style={{
-                    fontWeight: 700,
-                    fontSize: "1.0625rem",
-                    lineHeight: 1.1,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.03em",
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 4,
+                    background: c.accent,
+                    boxShadow: `0 0 20px -2px ${c.accent}`,
                   }}
-                >
-                  {c.name}
+                />
+                <div style={{ position: "relative" }}>
+                  <CompetitionMark competition={c.name} size={32} />
                 </div>
-                <div style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>{c.country}</div>
+                <div style={{ position: "relative" }}>
+                  <div
+                    className="cond"
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "1.0625rem",
+                      lineHeight: 1.1,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.03em",
+                    }}
+                  >
+                    {c.name}
+                  </div>
+                  <div style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>{c.country}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
-      {/* How a pick gets made. A real sequence, so it is numbered. */}
+      {/* How a pick gets made. A real sequence, so it is numbered, and laid
+          out along a single rule rather than as four identical boxes: four
+          equal cards in a row is the most template-shaped thing a page can
+          do. */}
       <section className="shell" style={{ paddingTop: "var(--s-8)" }}>
-        <div className="section-head">
-          <h2 className="cond" style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            How a pick reaches the board
-          </h2>
-        </div>
-        <div
-          style={{
-            display: "grid",
-            gap: "var(--s-3)",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          }}
-        >
+        <SectionHead>How a pick reaches the board</SectionHead>
+        <ol className="steps">
           {[
             ["Sync", "Fixtures from football-data.org, prices from a shared odds feed. Every club name resolves to one canonical team or the fixture is held back rather than guessed at."],
             ["Price", "Team form, expected goals and defensive pressure produce our own probability. That number exists before any bookmaker's price is looked at."],
             ["Compare", "A pick is drafted only where our number beats the price's implied probability by a margin worth the variance."],
             ["Gate", "A person reads it. Anything carrying an unresolved data flag never publishes. A day with no picks is a normal day."],
           ].map(([title, body], i) => (
-            <div key={title} className="panel panel-pad rise" style={{ ["--i" as string]: i }}>
-              <div
-                className="poster"
-                style={{
-                  fontSize: "2.25rem",
-                  color: "var(--brand)",
-                  lineHeight: 1,
-                  marginBottom: "var(--s-2)",
-                }}
-              >
-                {String(i + 1).padStart(2, "0")}
-              </div>
-              <h3 className="cond" style={{ textTransform: "uppercase", letterSpacing: "0.05em", fontSize: "1.125rem" }}>
+            <li key={title} className="step rise" style={{ ["--i" as string]: i }}>
+              <span className="step-dot" aria-hidden />
+              <span className="poster step-num">{String(i + 1).padStart(2, "0")}</span>
+              <h3 className="cond" style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontSize: "1.125rem" }}>
                 {title}
               </h3>
-              <p style={{ color: "var(--ink-2)", fontSize: "var(--t-small)", marginTop: "var(--s-2)", marginBottom: 0 }}>
+              <p style={{ color: "var(--ink-3)", fontSize: "var(--t-small)", marginTop: "var(--s-2)", marginBottom: 0 }}>
                 {body}
               </p>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
 
       {/* The differentiator, shown rather than described. */}
