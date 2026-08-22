@@ -155,7 +155,11 @@ async def main(ctx: JobContext) -> int:
 
         sport_key = LEAGUE_KEYS[comp["name"]]
         try:
-            response = await client.odds(sport_key)
+            # h2h + totals are both core markets on this endpoint, so the two
+            # come back in one call (cost = markets x regions = 2 credits per
+            # league). BTTS and double-chance are additional markets The Odds
+            # API only serves per-event, so they are not requested here.
+            response = await client.odds(sport_key, markets="h2h,totals")
         except ProviderError as exc:
             log.error("odds_api %s: %s", sport_key, exc)
             return comp, []

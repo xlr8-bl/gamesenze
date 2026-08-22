@@ -43,16 +43,39 @@ class MatchPrices:
     expected_away_goals: float
 
     def probability(self, market: str, selection: str) -> float | None:
-        key = f"{market}:{selection}".lower()
-        return {
-            "1x2:home": self.home,
-            "1x2:draw": self.draw,
-            "1x2:away": self.away,
-            "ou_2.5:over": self.over_2_5,
-            "ou_2.5:under": self.under_2_5,
-            "btts:yes": self.btts_yes,
-            "btts:no": self.btts_no,
-        }.get(key)
+        m, s = market.lower(), selection.lower()
+
+        if m == "1x2":
+            return {"home": self.home, "draw": self.draw, "away": self.away}.get(s)
+
+        if m == "btts":
+            return {"yes": self.btts_yes, "no": self.btts_no}.get(s)
+
+        # Double chance: two of the three 1X2 outcomes. Its selections cover the
+        # space twice over, which de-vigging has to account for downstream.
+        if m == "double_chance":
+            return {
+                "1x": self.home + self.draw,
+                "12": self.home + self.away,
+                "x2": self.draw + self.away,
+            }.get(s)
+
+        # Over/under any goal line, not just 2.5. Total goals are the sum of two
+        # independent Poisson scorelines, so the total is itself Poisson with
+        # the combined mean — priced on demand for whatever line the book hangs.
+        if m.startswith("ou_"):
+            try:
+                line = float(m[3:])
+            except ValueError:
+                return None
+            if s not in ("over", "under"):
+                return None
+            lam = self.expected_home_goals + self.expected_away_goals
+            under = sum(_poisson(k, lam) for k in range(0, math.floor(line) + 1))
+            under = min(under, 1.0)
+            return under if s == "under" else 1.0 - under
+
+        return None
 
 
 def _poisson(k: int, lam: float) -> float:
