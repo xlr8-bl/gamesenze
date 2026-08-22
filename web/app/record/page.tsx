@@ -8,6 +8,7 @@ import {
   type RecordSummary,
 } from "@/lib/supabase";
 import { Empty, Loading, Notice, Result, Signed, Stat } from "@/components/ui";
+import { CompetitionMark } from "@/components/sport";
 import UnitsChart from "@/components/UnitsChart";
 
 /**
@@ -57,30 +58,39 @@ export default function RecordPage() {
 
   if (error) {
     return (
-      <main className="stack">
+      <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
         <Notice tone="bad">The record could not be loaded: {error}</Notice>
-      </main>
+      </div>
     );
   }
-  if (rows === null) return <Loading label="Loading the record" />;
+  if (rows === null)
+    return (
+      <div className="shell" style={{ paddingTop: "var(--s-6)" }}>
+        <Loading label="Loading the record" />
+      </div>
+    );
 
   if (rows.length === 0) {
     return (
-      <main className="stack">
-        <h1>Record</h1>
+      <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
+        <h1 className="poster" style={{ fontSize: "clamp(2rem, 1.5rem + 2.4vw, 3.25rem)" }}>
+          The record
+        </h1>
         <Empty title="Nothing has settled yet">
           Every pick we publish lands here once its fixture finishes, won or
           lost, with the price we published and the price the market closed at.
           Nothing is removed from this page after the fact.
         </Empty>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="stack">
+    <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
       <div className="row">
-        <h1>Record</h1>
+        <h1 className="poster" style={{ fontSize: "clamp(2rem, 1.5rem + 2.4vw, 3.25rem)" }}>
+          The record
+        </h1>
         {sports.length > 1 && (
           <div className="seg" role="group" aria-label="Filter by sport">
             {["all", ...sports].map((s) => (
@@ -98,11 +108,11 @@ export default function RecordPage() {
 
       {head && <Headline summary={head} />}
 
-      <div className="panel">
+      <div className="panel panel-pad">
         <UnitsChart rows={visible} />
       </div>
 
-      <div className="panel panel-flush">
+      <div className="panel">
         <div className="table-scroll">
           <table>
             <caption
@@ -131,14 +141,16 @@ export default function RecordPage() {
               {shown.map((r) => (
                 <tr key={r.id}>
                   <td style={{ paddingLeft: "var(--s-5)" }}>
-                    <div>
-                      {r.home_team} v {r.away_team}
-                    </div>
-                    <div
-                      className="num"
-                      style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}
-                    >
-                      {r.kickoff_at.slice(0, 10)}
+                    <div className="cluster" style={{ gap: "var(--s-2)", flexWrap: "nowrap" }}>
+                      <CompetitionMark competition={r.competition} size={22} />
+                      <div style={{ minWidth: 0 }}>
+                        <div className="cond" style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+                          {r.home_team} <span style={{ color: "var(--ink-3)" }}>v</span> {r.away_team}
+                        </div>
+                        <div className="num" style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>
+                          {r.kickoff_at.slice(0, 10)}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td>
@@ -187,7 +199,7 @@ export default function RecordPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -196,7 +208,7 @@ function Headline({ summary: s }: { summary: RecordSummary }) {
   return (
     <div className="stack-s">
       <div
-        className="panel"
+        className="panel panel-pad"
         style={{
           display: "grid",
           gap: "var(--s-5)",
@@ -207,7 +219,6 @@ function Headline({ summary: s }: { summary: RecordSummary }) {
           label="Settled picks"
           value={s.settled}
           note={s.pushed > 0 ? `${s.pushed} void or pushed` : undefined}
-          size="xl"
         />
         <Stat
           label="Hit rate"
@@ -219,7 +230,7 @@ function Headline({ summary: s }: { summary: RecordSummary }) {
             )
           }
           note={`${s.won} of ${settledDecided} decided`}
-          size="xl"
+          tone={s.hit_rate_pct !== null && Number(s.hit_rate_pct) >= 50 ? "won" : undefined}
         />
         <Stat
           label="Return, level stakes"
@@ -231,7 +242,7 @@ function Headline({ summary: s }: { summary: RecordSummary }) {
             )
           }
           note={`${Number(s.units).toFixed(2)} units`}
-          size="xl"
+          tone={s.roi_pct !== null && Number(s.roi_pct) > 0 ? "brand" : undefined}
         />
         <Stat
           label="Closing line value"
@@ -243,7 +254,6 @@ function Headline({ summary: s }: { summary: RecordSummary }) {
             )
           }
           note={`${s.clv_sample} with a closing price`}
-          size="xl"
         />
       </div>
 

@@ -46,6 +46,9 @@ export type Pick = {
   result: "won" | "lost" | "push" | "void" | null;
   sport: string;
   kickoff_at: string;
+  fixture_status: string;
+  competition: string | null;
+  competition_country: string | null;
   home_team: string | null;
   away_team: string | null;
   latest_odds: number | null;
@@ -108,6 +111,7 @@ export type RecordRow = {
   result: "won" | "lost" | "push" | "void";
   sport: string;
   kickoff_at: string;
+  competition: string | null;
   home_team: string | null;
   away_team: string | null;
   clv_pct: number | null;

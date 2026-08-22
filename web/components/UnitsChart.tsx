@@ -57,7 +57,9 @@ export default function UnitsChart({ rows }: { rows: RecordRow[] }) {
         className="row"
         style={{ marginBottom: "var(--s-3)", alignItems: "baseline" }}
       >
-        <h2>Cumulative units, one unit per pick</h2>
+        <h2 className="cond" style={{ textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          Cumulative units, one unit per pick
+        </h2>
         <span className="num" style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>
           {dates}
         </span>
@@ -85,12 +87,12 @@ export default function UnitsChart({ rows }: { rows: RecordRow[] }) {
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
               <stop
                 offset="0%"
-                stopColor={up ? "var(--won)" : "var(--lost)"}
-                stopOpacity="0.22"
+                stopColor={up ? "var(--brand)" : "var(--lost)"}
+                stopOpacity="0.28"
               />
               <stop
                 offset="100%"
-                stopColor={up ? "var(--won)" : "var(--lost)"}
+                stopColor={up ? "var(--brand)" : "var(--lost)"}
                 stopOpacity="0"
               />
             </linearGradient>
@@ -111,7 +113,7 @@ export default function UnitsChart({ rows }: { rows: RecordRow[] }) {
             y={y(0) + 4}
             fill="var(--ink-3)"
             fontSize="10"
-            fontFamily="var(--mono)"
+            fontFamily="var(--cond)"
           >
             0
           </text>
@@ -120,7 +122,7 @@ export default function UnitsChart({ rows }: { rows: RecordRow[] }) {
           <path
             d={path}
             fill="none"
-            stroke={up ? "var(--won)" : "var(--lost)"}
+            stroke={up ? "var(--brand)" : "var(--lost)"}
             strokeWidth="2"
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -131,7 +133,7 @@ export default function UnitsChart({ rows }: { rows: RecordRow[] }) {
             cx={x(last.i)}
             cy={y(last.units)}
             r="4"
-            fill={up ? "var(--won)" : "var(--lost)"}
+            fill={up ? "var(--brand)" : "var(--lost)"}
             stroke="var(--surface)"
             strokeWidth="2"
           />
@@ -140,7 +142,7 @@ export default function UnitsChart({ rows }: { rows: RecordRow[] }) {
             y={y(last.units) + 4}
             fill="var(--ink-2)"
             fontSize="11"
-            fontFamily="var(--mono)"
+            fontFamily="var(--cond)"
           >
             {last.units > 0 ? "+" : ""}
             {last.units.toFixed(1)}

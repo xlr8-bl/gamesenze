@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowUpRight, Check, Plus } from "@phosphor-icons/react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Check, Plus } from "@phosphor-icons/react";
 import {
   fetchBoard,
   fetchBudgetStatus,
@@ -10,7 +10,17 @@ import {
 } from "@/lib/supabase";
 import { addToCombo, readCombo } from "@/lib/comboStorage";
 import { MAX_LEGS } from "@/lib/combo";
-import { Empty, Loading, Notice, Tag } from "@/components/ui";
+import { Chip, Empty, Loading, Notice } from "@/components/ui";
+import {
+  BestBet,
+  ClubBadge,
+  CompetitionHeader,
+  Countdown,
+  Drift,
+  KickoffLine,
+  PriceButton,
+} from "@/components/sport";
+import { competitionIdentity } from "@/lib/identity";
 
 const RUNG_BANNER: Record<
   BudgetStatus["ladder_rung"],
@@ -36,6 +46,7 @@ export default function Board() {
   const [budget, setBudget] = useState<BudgetStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [inCombo, setInCombo] = useState<Set<string>>(new Set());
+  const [comp, setComp] = useState("all");
 
   useEffect(() => {
     let live = true;
@@ -53,42 +64,85 @@ export default function Board() {
   }, []);
 
   // v_published_picks carries settled picks too, so the record page can read
-  // the same view. The board is about what you can still act on, so anything
-  // already kicked off is filtered out here rather than shown with an empty
-  // result column. It has not disappeared: it is on the record page.
-  const open = (picks ?? []).filter(
-    (p) => new Date(p.kickoff_at).getTime() > Date.now(),
+  // the same view. The board is about what you can still act on.
+  const open = useMemo(
+    () =>
+      (picks ?? [])
+        .filter((p) => new Date(p.kickoff_at).getTime() > Date.now())
+        .sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at)),
+    [picks],
   );
 
-  // Degradation is never silent. The worst rung across providers is the one
-  // the reader needs to know about, so it is the one that renders.
-  const banner = budget
-    .map((b) => RUNG_BANNER[b.ladder_rung])
-    .find((b) => b !== null);
+  const competitions = useMemo(() => {
+    const names = [...new Set(open.map((p) => p.competition ?? "Football"))];
+    return names.sort(
+      (a, b) => competitionIdentity(b).weight - competitionIdentity(a).weight,
+    );
+  }, [open]);
+
+  const visible = comp === "all" ? open : open.filter((p) => (p.competition ?? "Football") === comp);
+
+  // Grouped under branded headers, in competition-weight order, so a
+  // Champions League night leads and a Tuesday in the Championship does not.
+  const groups = useMemo(() => {
+    const by = new Map<string, Pick[]>();
+    for (const p of visible) {
+      const k = p.competition ?? "Football";
+      by.set(k, [...(by.get(k) ?? []), p]);
+    }
+    return [...by.entries()].sort(
+      (a, b) => competitionIdentity(b[0]).weight - competitionIdentity(a[0]).weight,
+    );
+  }, [visible]);
+
+  const banner = budget.map((b) => RUNG_BANNER[b.ladder_rung]).find((b) => b !== null);
 
   if (error) {
     return (
-      <main className="stack">
+      <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
         <Notice tone="bad">
           The board could not be loaded: {error}. This is our fault, not a quiet
-          day. Nothing below is missing because it was withheld.
+          day. Nothing is missing below because it was withheld.
         </Notice>
-      </main>
+      </div>
     );
   }
 
-  if (picks === null) return <Loading label="Loading the board" />;
+  if (picks === null) {
+    return (
+      <div className="shell" style={{ paddingTop: "var(--s-6)" }}>
+        <Loading label="Loading the board" />
+      </div>
+    );
+  }
 
   return (
-    <main className="stack">
+    <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
       <div className="row">
-        <h1>Board</h1>
-        <span style={{ color: "var(--ink-3)", fontSize: "var(--t-small)" }}>
-          <span className="num">{open.length}</span> open
+        <h1 className="poster" style={{ fontSize: "clamp(2rem, 1.5rem + 2.4vw, 3.25rem)" }}>
+          Today&apos;s board
+        </h1>
+        <span className="cond" style={{ color: "var(--ink-3)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          <span className="num" style={{ color: "var(--brand)", fontWeight: 700 }}>{open.length}</span> open
         </span>
       </div>
 
       {banner && <Notice tone={banner.tone}>{banner.text}</Notice>}
+
+      {competitions.length > 1 && (
+        <div className="table-scroll" style={{ paddingBottom: 2 }}>
+          <div className="seg" role="group" aria-label="Filter by competition">
+            <button aria-pressed={comp === "all"} onClick={() => setComp("all")}>
+              All
+            </button>
+            {competitions.map((c) => (
+              <button key={c} aria-pressed={comp === c} onClick={() => setComp(c)}>
+                {competitionIdentity(c).short}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {open.length === 0 ? (
         <Empty title="Nothing open right now">
@@ -98,24 +152,32 @@ export default function Board() {
           move to the <a href="/record/">record</a>, won or lost.
         </Empty>
       ) : (
-        <div className="stack">
-          {open.map((pick, i) => (
-            <PickRow
-              key={pick.id}
-              pick={pick}
-              index={i}
-              added={inCombo.has(pick.id)}
-              full={inCombo.size >= MAX_LEGS}
-              onAdd={() =>
-                setInCombo(new Set(addToCombo(pick).map((l) => l.pickId)))
+        groups.map(([competition, rows]) => (
+          <section key={competition} className="stack-s">
+            <CompetitionHeader
+              competition={competition}
+              right={
+                <span className="cond num" style={{ color: "var(--ink-2)", fontSize: "var(--t-small)", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+                  {rows.length} {rows.length === 1 ? "pick" : "picks"}
+                </span>
               }
             />
-          ))}
-        </div>
+            {rows.map((pick, i) => (
+              <PickRow
+                key={pick.id}
+                pick={pick}
+                index={i}
+                added={inCombo.has(pick.id)}
+                full={inCombo.size >= MAX_LEGS}
+                onAdd={() => setInCombo(new Set(addToCombo(pick).map((l) => l.pickId)))}
+              />
+            ))}
+          </section>
+        ))
       )}
 
       {inCombo.size > 0 && <ComboTray count={inCombo.size} />}
-    </main>
+    </div>
   );
 }
 
@@ -136,218 +198,184 @@ function PickRow({
   const excluded = pick.excluded_factors ?? [];
   const book = pick.latest_bookmaker ?? pick.capture_bookmaker;
   const captured = pick.latest_odds_at ?? pick.published_at;
+  const c = competitionIdentity(pick.competition);
 
-  // Our number against the market's. The gap is the entire reason the pick
-  // exists, so it is shown rather than described.
   const implied = odds ? 1 / odds : null;
   const edge =
     pick.internal_prob !== null && implied !== null
       ? (pick.internal_prob - implied) * 100
       : null;
 
-  const kickoff = new Date(pick.kickoff_at);
   const disabled = added || full;
 
   return (
     <article
-      className="panel enter"
-      style={{ ["--i" as string]: index }}
+      className="panel rise"
+      style={{ ["--i" as string]: index, overflow: "hidden" }}
       aria-labelledby={`pick-${pick.id}`}
     >
-      <div className="row" style={{ alignItems: "flex-start" }}>
-        <div>
-          <h2 id={`pick-${pick.id}`}>
-            {pick.home_team} v {pick.away_team}
-          </h2>
-          <div
-            className="cluster"
-            style={{
-              color: "var(--ink-3)",
-              fontSize: "var(--t-small)",
-              marginTop: 2,
-              gap: "var(--s-3)",
-            }}
-          >
-            <span>
-              {kickoff.toLocaleDateString("en-GB", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-                timeZone: "UTC",
-              })}
-            </span>
-            <span className="num">
-              {kickoff.toISOString().slice(11, 16)} UTC
-            </span>
+      {/* A hairline of the competition's colour along the top edge, so a card
+          is placeable at a glance even out of its group. */}
+      <div aria-hidden style={{ height: 3, background: `linear-gradient(90deg, ${c.accent}, transparent 70%)` }} />
+
+      <div style={{ padding: "var(--s-4)" }}>
+        <div className="row" style={{ alignItems: "flex-start", gap: "var(--s-4)" }}>
+          <div className="grow">
+            <div className="cluster" style={{ gap: "var(--s-3)", flexWrap: "nowrap" }}>
+              <div className="cluster" style={{ gap: 6, flexWrap: "nowrap" }}>
+                <ClubBadge name={pick.home_team} size={34} />
+                <ClubBadge name={pick.away_team} size={34} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <h2
+                  id={`pick-${pick.id}`}
+                  className="cond"
+                  style={{ fontSize: "1.25rem", fontWeight: 700, letterSpacing: "0.01em", lineHeight: 1.15 }}
+                >
+                  {pick.home_team} <span style={{ color: "var(--ink-3)" }}>v</span> {pick.away_team}
+                </h2>
+                <KickoffLine at={pick.kickoff_at} />
+              </div>
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div className="label" style={{ marginBottom: 1 }}>Kicks off in</div>
+            <Countdown to={pick.kickoff_at} />
           </div>
         </div>
-        <button
-          className={`btn ${added ? "btn-quiet" : "btn-ghost"} btn-sm`}
-          onClick={onAdd}
-          disabled={disabled}
-          aria-disabled={disabled}
-          title={
-            added
-              ? "Already in your combo"
-              : full
-                ? `A combo holds at most ${MAX_LEGS} legs`
-                : undefined
-          }
+
+        {/* Two columns from tablet width up: the case on the left, the price
+            rail on the right. One column was leaving a thousand pixels of
+            nothing between the selection and its price. */}
+        <div className="pick-body">
+          <div className="pick-main">
+            <div className="label">Our selection</div>
+            <div className="cond" style={{ fontWeight: 700, fontSize: "1.5rem", lineHeight: 1.15 }}>
+              {pick.selection}
+            </div>
+            <div style={{ color: "var(--ink-3)", fontSize: "var(--t-small)" }}>{pick.market}</div>
+
+            <div className="cluster" style={{ marginTop: "var(--s-3)" }}>
+              {pick.confidence_tag === "best_bet" ? (
+                <BestBet />
+              ) : pick.confidence_tag ? (
+                <Chip variant="outline-brand">{pick.confidence_tag.replace(/_/g, " ")}</Chip>
+              ) : null}
+              {(pick.stakes_tags ?? []).map((tag) => (
+                <Chip key={tag}>{tag.replace(/_/g, " ")}</Chip>
+              ))}
+            </div>
+
+            {pick.reasoning_full && (
+              <p style={{ color: "var(--ink-2)", marginTop: "var(--s-3)", fontSize: "var(--t-small)" }}>
+                {pick.reasoning_full}
+              </p>
+            )}
+          </div>
+
+          <div className="pick-rail">
+            <div className="row" style={{ flexWrap: "nowrap", alignItems: "flex-start" }}>
+              <div>
+                <div className="label">We make it</div>
+                <div className="cond num" style={{ fontWeight: 700, fontSize: "1.5rem", lineHeight: 1.15 }}>
+                  {pick.internal_prob !== null ? `${(pick.internal_prob * 100).toFixed(1)}%` : "held"}
+                </div>
+                <div style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>
+                  {implied !== null ? `price says ${(implied * 100).toFixed(1)}%` : "no price"}
+                </div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <PriceButton
+                  odds={odds}
+                  book={book}
+                  selected={added}
+                  disabled={disabled}
+                  onClick={onAdd}
+                  label={`${added ? "Remove" : "Add"} ${pick.selection} at ${odds?.toFixed(2)} ${added ? "from" : "to"} your combo`}
+                />
+                <div style={{ marginTop: 5, minHeight: 14 }}>
+                  <Drift from={pick.capture_odds} to={pick.latest_odds} />
+                </div>
+              </div>
+            </div>
+            {edge !== null && <EdgeBar edge={edge} accent={c.accent} />}
+          </div>
+        </div>
+
+        {/*
+          REQ-QA-2: a factor we could not use renders as an explicit block.
+          Stating the limit is a trust asset; hiding it is the beginning of a
+          track record we cannot defend.
+        */}
+        {excluded.length > 0 && (
+          <div className="stack-s" style={{ marginTop: "var(--s-4)" }}>
+            {excluded.map((factor) => (
+              <Notice tone="caution" key={factor.factor}>
+                {factor.message}
+              </Notice>
+            ))}
+          </div>
+        )}
+
+        <div
+          className="row"
+          style={{
+            marginTop: "var(--s-4)",
+            paddingTop: "var(--s-3)",
+            borderTop: "1px solid var(--line)",
+            color: "var(--ink-3)",
+            fontSize: "var(--t-micro)",
+          }}
         >
-          {added ? (
-            <>
-              <Check size={13} weight="bold" aria-hidden /> In combo
-            </>
-          ) : (
-            <>
-              <Plus size={13} weight="bold" aria-hidden /> Add to combo
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* The selection and its price, given the weight they deserve. */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-          gap: "var(--s-4)",
-          margin: "var(--s-4) 0",
-          paddingTop: "var(--s-4)",
-          borderTop: "1px solid var(--line)",
-        }}
-      >
-        <div style={{ gridColumn: "span 2", minWidth: 0 }}>
-          <div style={{ color: "var(--ink-3)", fontSize: "var(--t-small)" }}>
-            Selection
-          </div>
-          <div style={{ fontWeight: 550, marginTop: 2 }}>
-            {pick.selection}
-            <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>
-              {" "}
-              in {pick.market}
-            </span>
-          </div>
+          <span>
+            Price read{" "}
+            <span className="num">
+              {captured ? new Date(captured).toISOString().slice(11, 16) : "unknown"}
+            </span>{" "}
+            UTC. Not a live quote; confirm at your book.
+          </span>
+          <span className="cluster" style={{ gap: 5, color: added ? "var(--brand)" : "var(--ink-3)" }}>
+            {added ? <Check size={12} weight="bold" aria-hidden /> : <Plus size={12} weight="bold" aria-hidden />}
+            {added ? "In your combo" : full ? `Combo full at ${MAX_LEGS}` : "Tap the price to add"}
+          </span>
         </div>
-        <div>
-          <div style={{ color: "var(--ink-3)", fontSize: "var(--t-small)" }}>
-            Best price
-          </div>
-          <div className="num num-lg">{odds ? odds.toFixed(2) : "none"}</div>
-          <div style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>
-            {book ?? "no book"}
-          </div>
-        </div>
-        <div>
-          <div style={{ color: "var(--ink-3)", fontSize: "var(--t-small)" }}>
-            Our number
-          </div>
-          <div className="num num-lg">
-            {pick.internal_prob !== null
-              ? `${(pick.internal_prob * 100).toFixed(1)}%`
-              : "held"}
-          </div>
-          <div style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>
-            {implied !== null
-              ? `price implies ${(implied * 100).toFixed(1)}%`
-              : "no price"}
-          </div>
-        </div>
-      </div>
-
-      {edge !== null && <EdgeBar edge={edge} />}
-
-      {(pick.confidence_tag || (pick.stakes_tags ?? []).length > 0) && (
-        <div className="cluster" style={{ marginBottom: "var(--s-3)" }}>
-          {pick.confidence_tag && (
-            <Tag strong>{pick.confidence_tag.replace(/_/g, " ")}</Tag>
-          )}
-          {(pick.stakes_tags ?? []).map((tag) => (
-            <Tag key={tag}>{tag.replace(/_/g, " ")}</Tag>
-          ))}
-        </div>
-      )}
-
-      {pick.reasoning_full && (
-        <p style={{ color: "var(--ink-2)" }}>{pick.reasoning_full}</p>
-      )}
-
-      {/*
-        REQ-QA-2: a factor we could not use renders as an explicit block.
-        Stating the limit is a trust asset; hiding it is the beginning of a
-        track record we cannot defend.
-      */}
-      {excluded.length > 0 && (
-        <div className="stack-s" style={{ marginTop: "var(--s-4)" }}>
-          {excluded.map((factor) => (
-            <Notice tone="caution" key={factor.factor}>
-              {factor.message}
-            </Notice>
-          ))}
-        </div>
-      )}
-
-      <div
-        style={{
-          marginTop: "var(--s-4)",
-          paddingTop: "var(--s-3)",
-          borderTop: "1px solid var(--line)",
-          color: "var(--ink-3)",
-          fontSize: "var(--t-micro)",
-        }}
-      >
-        Price captured{" "}
-        <span className="num">
-          {captured ? new Date(captured).toISOString().slice(11, 16) : "unknown"}
-        </span>{" "}
-        UTC. Not a live quote; confirm at your book before staking.
       </div>
     </article>
   );
 }
 
 /**
- * The edge, drawn to scale.
- *
- * A bar chart of one value, on a fixed domain of plus or minus 15 points, so
- * two picks on different days are directly comparable. The scale is fixed
- * deliberately: a bar that always fills the width would make every edge look
- * the same size.
+ * The edge, drawn to scale on a fixed domain of plus or minus 15 points, so
+ * two picks on different days are directly comparable. A bar that always
+ * filled the width would make every edge look the same size.
  */
-function EdgeBar({ edge }: { edge: number }) {
-  const DOMAIN = 15;
+function EdgeBar({ edge, accent }: { edge: number; accent: string }) {
+  const DOMAIN = 10;
   const pct = Math.min(Math.abs(edge), DOMAIN) / DOMAIN;
   const positive = edge >= 0;
   return (
-    <div style={{ marginBottom: "var(--s-4)" }}>
-      <div
-        className="row"
-        style={{ marginBottom: 6, gap: "var(--s-2)", flexWrap: "nowrap" }}
-      >
-        <span style={{ color: "var(--ink-3)", fontSize: "var(--t-small)" }}>
-          Edge over the market
-        </span>
+    <div style={{ marginTop: "var(--s-4)" }}>
+      <div className="row" style={{ marginBottom: 6, gap: "var(--s-2)", flexWrap: "nowrap" }}>
+        <span className="label">Edge over the market</span>
         <span
-          className={`num ${positive ? "sign-pos" : "sign-neg"}`}
-          style={{ fontSize: "var(--t-small)" }}
+          className={`cond num ${positive ? "sign-pos" : "sign-neg"}`}
+          style={{ fontWeight: 700, fontSize: "1rem" }}
         >
           {positive ? "+" : ""}
           {edge.toFixed(1)} pts
         </span>
       </div>
       <div
-        style={{ display: "flex", height: 6, gap: 2, position: "relative" }}
+        style={{ display: "flex", height: 12, gap: 2, position: "relative" }}
         role="img"
         aria-label={`Edge over the market: ${edge.toFixed(1)} percentage points, on a scale of plus or minus ${DOMAIN}`}
       >
-        {/* Left half runs right-to-left from the centre, so the zero line is
-            the middle of the track and the direction reads without a label. */}
         <div
           style={{
             flex: 1,
             display: "flex",
             justifyContent: "flex-end",
-            background: "var(--line)",
+            background: "var(--raised)",
             borderRadius: "var(--r-1) 0 0 var(--r-1)",
           }}
         >
@@ -361,33 +389,44 @@ function EdgeBar({ edge }: { edge: number }) {
             />
           )}
         </div>
-        {/* The zero mark. Without it a centre-anchored bar is unreadable. */}
+        {/* Zero, and the quarter marks either side of it. A centre-anchored
+            bar with no scale on it cannot be read. */}
+        {[12.5, 25, 37.5, 62.5, 75, 87.5].map((left) => (
+          <span
+            key={left}
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: `${left}%`,
+              top: 3,
+              width: 1,
+              height: 6,
+              background: "var(--line-firm)",
+              opacity: 0.7,
+            }}
+          />
+        ))}
         <span
           aria-hidden
           style={{
             position: "absolute",
             left: "50%",
-            top: -3,
-            width: 1,
-            height: 12,
-            marginLeft: -0.5,
-            background: "var(--line-firm)",
+            top: -4,
+            width: 2,
+            height: 20,
+            marginLeft: -1,
+            borderRadius: 1,
+            background: "var(--ink-3)",
           }}
         />
-        <div
-          style={{
-            flex: 1,
-            background: "var(--line)",
-            borderRadius: "0 var(--r-1) var(--r-1) 0",
-          }}
-        >
+        <div style={{ flex: 1, background: "var(--raised)", borderRadius: "0 var(--r-1) var(--r-1) 0" }}>
           {positive && (
             <span
               style={{
                 display: "block",
                 height: "100%",
                 width: `${pct * 100}%`,
-                background: "var(--won)",
+                background: `linear-gradient(90deg, ${accent}, var(--brand))`,
                 borderRadius: "0 var(--r-1) var(--r-1) 0",
               }}
             />
@@ -398,27 +437,24 @@ function EdgeBar({ edge }: { edge: number }) {
   );
 }
 
-/** Sticky only once there is something in it. */
 function ComboTray({ count }: { count: number }) {
   return (
     <div
-      className="panel enter"
+      className="panel panel-hi rise"
       style={{
         position: "sticky",
         bottom: "var(--s-4)",
-        zIndex: "var(--z-tray)" as unknown as number,
+        zIndex: 200,
         padding: "var(--s-3) var(--s-4)",
-        background: "var(--raised)",
-        borderColor: "var(--line-firm)",
       }}
     >
       <div className="row" style={{ flexWrap: "nowrap" }}>
-        <span style={{ fontSize: "var(--t-small)" }}>
-          <span className="num">{count}</span> of {MAX_LEGS} legs selected
+        <span className="cond" style={{ letterSpacing: "0.05em", textTransform: "uppercase", fontWeight: 600 }}>
+          <span className="num" style={{ color: "var(--brand)", fontWeight: 700 }}>{count}</span> of {MAX_LEGS} legs
         </span>
         <a href="/combo-builder/" className="btn btn-sm">
-          Open combo builder
-          <ArrowUpRight size={13} weight="bold" aria-hidden />
+          Open combo
+          <ArrowRight size={14} weight="bold" aria-hidden />
         </a>
       </div>
     </div>

@@ -13,6 +13,7 @@ import {
 import { clearCombo, readCombo, removeFromCombo } from "@/lib/comboStorage";
 import { getSupabase, isConfigured } from "@/lib/supabase";
 import { Empty, Notice, Stat } from "@/components/ui";
+import { ClubBadge } from "@/components/sport";
 
 const STAKES = [10, 25, 50, 100];
 
@@ -54,39 +55,42 @@ export default function ComboBuilder() {
 
   if (legs.length === 0) {
     return (
-      <main className="stack">
-        <h1>Combo builder</h1>
+      <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
+        <h1 className="poster" style={{ fontSize: "clamp(2rem, 1.5rem + 2.4vw, 3.25rem)" }}>Combo builder</h1>
         <Empty title="No picks selected">
           Add between {MIN_LEGS} and {MAX_LEGS} picks from the{" "}
           <a href="/board/">board</a> and the combined maths appears here. The
           selection lives in this browser only; nothing is sent to us until you
           choose to save a combo.
         </Empty>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="stack">
+    <div className="shell stack" style={{ paddingTop: "var(--s-6)" }}>
       <div className="row">
-        <h1>Combo builder</h1>
-        <span style={{ color: "var(--ink-3)", fontSize: "var(--t-small)" }}>
-          <span className="num">{legs.length}</span> of {MAX_LEGS} legs
+        <h1 className="poster" style={{ fontSize: "clamp(2rem, 1.5rem + 2.4vw, 3.25rem)" }}>Combo builder</h1>
+        <span className="cond" style={{ color: "var(--ink-3)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          <span className="num" style={{ color: "var(--brand)", fontWeight: 700 }}>{legs.length}</span> of {MAX_LEGS} legs
         </span>
       </div>
 
-      <section className="panel panel-flush">
+      <section className="panel">
         <div className="ledger">
           {legs.map((leg) => (
-            <div key={leg.pickId} className="ledger-row row" style={{ gap: "var(--s-3)" }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 550 }}>{leg.label}</div>
-                <div style={{ color: "var(--ink-3)", fontSize: "var(--t-small)" }}>
-                  {leg.selection} in {leg.market}, at {leg.bookmaker}
+            <div key={leg.pickId} className="row" style={{ gap: "var(--s-3)", padding: "var(--s-4) var(--s-5)" }}>
+              <div className="cluster" style={{ gap: "var(--s-3)", flexWrap: "nowrap", minWidth: 0 }}>
+                <ClubBadge name={leg.label.split(" v ")[0]} size={30} />
+                <div style={{ minWidth: 0 }}>
+                  <div className="cond" style={{ fontWeight: 700, fontSize: "1.0625rem" }}>{leg.label}</div>
+                  <div style={{ color: "var(--ink-3)", fontSize: "var(--t-small)" }}>
+                    {leg.selection} in {leg.market}, at {leg.bookmaker}
+                  </div>
                 </div>
               </div>
               <div className="cluster" style={{ gap: "var(--s-4)", flexWrap: "nowrap" }}>
-                <span className="num" style={{ fontSize: "1.0625rem" }}>
+                <span className="cond num" style={{ fontSize: "1.5rem", fontWeight: 700 }}>
                   {leg.odds.toFixed(2)}
                 </span>
                 <button
@@ -122,7 +126,7 @@ export default function ComboBuilder() {
         </Notice>
       ) : (
         <>
-          <section className="panel stack-s">
+          <section className="panel panel-pad stack-s">
             <div
               style={{
                 display: "grid",
@@ -130,18 +134,16 @@ export default function ComboBuilder() {
                 gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
               }}
             >
-              <Stat label="Combined price" value={quote.totalOdds.toFixed(2)} size="xl" />
+              <Stat label="Combined price" value={quote.totalOdds.toFixed(2)} tone="brand" />
               <Stat
                 label={`£${stake} returns`}
                 value={`£${quote.payout.toFixed(2)}`}
                 note={`£${quote.profit.toFixed(2)} profit`}
-                size="xl"
               />
               <Stat
                 label="Price implies"
                 value={`${(quote.impliedProb * 100).toFixed(1)}%`}
                 note="chance of landing"
-                size="xl"
               />
             </div>
             <div
@@ -182,7 +184,7 @@ export default function ComboBuilder() {
           </button>
         </>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -221,9 +223,9 @@ function Slip({ legs, totalOdds }: { legs: Leg[]; totalOdds: number }) {
   }
 
   return (
-    <section className="panel stack-s">
+    <section className="panel panel-pad stack-s">
       <div className="row">
-        <h2>Place this at your book</h2>
+        <h2 className="cond" style={{ textTransform: "uppercase", letterSpacing: "0.04em" }}>Place this at your book</h2>
         <button className="btn btn-ghost btn-sm" onClick={copy}>
           {copied ? (
             <>
@@ -244,7 +246,7 @@ function Slip({ legs, totalOdds }: { legs: Leg[]; totalOdds: number }) {
           border: "1px solid var(--line)",
           borderRadius: "var(--r-2)",
           whiteSpace: "pre-wrap",
-          fontFamily: "var(--mono)",
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
           fontSize: "var(--t-small)",
           color: "var(--ink-2)",
           overflowX: "auto",
