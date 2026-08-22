@@ -42,8 +42,8 @@ async def _run() -> int:
     fixtures = await db.fetch(
         """
         select f.id, f.kickoff_at,
-               th.name home_name, f.home_team_id,
-               ta.name away_name, f.away_team_id
+               th.canonical_name home_name, f.home_team_id,
+               ta.canonical_name away_name, f.away_team_id
           from fixtures f
           join teams th on th.id = f.home_team_id
           join teams ta on ta.id = f.away_team_id
@@ -76,42 +76,65 @@ async def _run() -> int:
         flag = "PASS" if ok else "FAIL"
         print(f"  [{flag}] {f['home_name']} ({home_n}) v {f['away_name']} ({away_n})")
 
+    has_stats = await db.fetchval(
+        "select count(distinct team_id) from team_match_stats where status='finished'"
+    )
+    on_fixt = await db.fetchval(
+        """select count(distinct t) from (
+             select home_team_id t from fixtures
+             where kickoff_at between now() and now()+interval '48 hours'
+             union select away_team_id from fixtures
+             where kickoff_at between now() and now()+interval '48 hours'
+           ) x
+           where t in (select team_id from team_match_stats where status='finished')"""
+    )
     print()
-    if gate_ok == 0:
-        print("Every fixture FAILS. The stats exist but don't match these team IDs.")
-        print("Checking whether the same club exists under two team rows...")
+    print(f"teams with finished stats:             {has_stats}")
+    print(f"upcoming-fixture teams that have any:   {on_fixt}")
+
+    if gate_ok < len(fixtures):
         print()
-        # Clubs that have stats but whose id never appears on an upcoming fixture,
-        # yet a same-named team row does — the duplicate-canonical smell.
-        dupes = await db.fetch(
+        print("Upcoming-fixture team ids with NO finished stats, and whether a")
+        print("DIFFERENTLY-NAMED team row holds those stats (the split-canonical bug):")
+        print()
+        # Every distinct team id on an upcoming fixture.
+        up = await db.fetch(
             """
-            select name, count(*) n, array_agg(id::text) ids
-              from teams
-             group by name
-            having count(*) > 1
-             order by name
+            select distinct t.id, t.canonical_name
+              from (
+                select home_team_id id from fixtures
+                where kickoff_at between now() and now()+interval '48 hours'
+                union
+                select away_team_id from fixtures
+                where kickoff_at between now() and now()+interval '48 hours'
+              ) f join teams t on t.id = f.id
+             order by 2
             """
         )
-        if dupes:
-            print("Duplicate team rows (same name, different id) — this is the bug:")
-            for d in dupes:
-                print(f"  {d['name']}: {d['n']} rows  {d['ids']}")
-        else:
-            print("No duplicate team names. The mismatch is elsewhere:")
-            has_stats = await db.fetchval(
-                "select count(distinct team_id) from team_match_stats where status='finished'"
+        for u in up:
+            n = await db.fetchval(
+                "select count(*) from team_match_stats "
+                "where team_id = $1 and status='finished'",
+                u["id"],
             )
-            on_fixt = await db.fetchval(
-                """select count(distinct t) from (
-                     select home_team_id t from fixtures
-                     where kickoff_at between now() and now()+interval '48 hours'
-                     union select away_team_id from fixtures
-                     where kickoff_at between now() and now()+interval '48 hours'
-                   ) x
-                   where t in (select team_id from team_match_stats where status='finished')"""
+            if n >= 6:
+                continue
+            # Any team that DOES have stats and shares the first word of the name.
+            first = (u["canonical_name"].split() or [u["canonical_name"]])[0]
+            twin = await db.fetch(
+                """
+                select t.canonical_name, count(*) n
+                  from teams t join team_match_stats s on s.team_id = t.id
+                 where s.status = 'finished'
+                   and t.id <> $1
+                   and lower(t.canonical_name) like lower($2)
+                 group by t.canonical_name
+                 order by 2 desc
+                """,
+                u["id"], f"%{first}%",
             )
-            print(f"  teams with finished stats:            {has_stats}")
-            print(f"  upcoming-fixture teams that have any:  {on_fixt}")
+            twin_str = ", ".join(f"{r['canonical_name']} ({r['n']})" for r in twin) or "none"
+            print(f"  '{u['canonical_name']}' has {n} -> stats live under: {twin_str}")
 
     await db.close()
     return 0
