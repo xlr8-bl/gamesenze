@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "preview": "cross-env NEXT_PUBLIC_DEMO=1 next build && npx --yes serve out -l 3100"
+    "preview": "cross-env NEXT_PUBLIC_DEMO=1 next build && npx --yes serve out -l 3100",
+    "preview:live": "next build && npx --yes serve out -l 3100"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
