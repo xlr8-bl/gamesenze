@@ -89,6 +89,7 @@ and sign up to API-Football **directly**, not via RapidAPI).
 pip install -e ".[dev,scrape]"
 cp .env.example .env            # fill in DATABASE_URL and keys
 
+python -m gamesenze.jobs.doctor   # verify .env and the DB connection before anything else
 python -m gamesenze.jobs.migrate
 python -m gamesenze.jobs.seed   # teams and aliases BEFORE any ingestion
 

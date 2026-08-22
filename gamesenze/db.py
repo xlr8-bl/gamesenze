@@ -65,6 +65,23 @@ class AsyncpgDb:
         command_timeout: float = 30.0,
     ):
         import asyncpg  # imported lazily so tests need no driver
+        import socket
+        from urllib.parse import urlsplit
+
+        # Fail early and legibly on the two mistakes that otherwise surface as
+        # a 40-line asyncpg traceback ending in "getaddrinfo failed": a
+        # DATABASE_URL still holding the .env placeholders, or the direct
+        # (IPv6-only) host in place of the pooler.
+        if not dsn or "<" in dsn or ">" in dsn:
+            raise SystemExit(
+                "DATABASE_URL is empty or still has the .env placeholders "
+                "(the <...> parts).\n"
+                "Edit your .env and paste the Supabase SESSION POOLER URI:\n"
+                "  postgresql://postgres.<ref>:<password>"
+                "@aws-0-<region>.pooler.supabase.com:5432/postgres\n"
+                "The username is postgres.<ref>, not plain postgres. "
+                "See docs/SETUP.md section 1."
+            )
 
         # GitHub Actions runners are IPv4-only and Supabase's direct database
         # host is IPv6-only, so in practice every connection from CI goes
@@ -87,7 +104,25 @@ class AsyncpgDb:
         if uses_transaction_pooler(dsn):
             kwargs["statement_cache_size"] = 0
 
-        pool = await asyncpg.create_pool(dsn, **kwargs)
+        try:
+            pool = await asyncpg.create_pool(dsn, **kwargs)
+        except (socket.gaierror, OSError) as exc:
+            host = urlsplit(dsn).hostname or "?"
+            hint = ""
+            if host.startswith("db.") and host.endswith(".supabase.co"):
+                hint = (
+                    "\nThat host is the DIRECT connection, which is IPv6-only "
+                    "and usually cannot be resolved. Use the Session pooler URI "
+                    "instead (host aws-0-<region>.pooler.supabase.com, user "
+                    "postgres.<ref>, port 5432)."
+                )
+            raise SystemExit(
+                f"Could not reach the database host '{host}': {exc}."
+                f"{hint}\n"
+                "Check DATABASE_URL in .env, then test it directly:\n"
+                '  psql "$DATABASE_URL" -c "select version();"\n'
+                "See docs/SETUP.md section 1."
+            ) from None
         return cls(pool)
 
     async def close(self) -> None:
