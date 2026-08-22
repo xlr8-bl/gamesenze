@@ -220,6 +220,61 @@ async def _edges() -> int:
 
 import sys
 
+async def _explain() -> int:
+    """Dump the model's actual inputs for every priced upcoming fixture.
+
+    Distinguishes a data bug (a team carrying implausible xG_for/xG_against,
+    e.g. from a mismatched resolve or a swapped column) from model
+    overconfidence (plausible inputs, extreme output). Prints each side's
+    feature window and the resulting expected goals and 1X2 probabilities.
+    """
+    from gamesenze.analysis.model import MatchModel
+    from gamesenze.backtest.features import get_features_as_of
+
+    s = Settings.from_env()
+    db = await AsyncpgDb.connect(s.database_url)
+    model = MatchModel()
+
+    fixtures = await db.fetch(
+        """
+        select f.id, f.kickoff_at, f.home_team_id, f.away_team_id,
+               th.canonical_name home, ta.canonical_name away
+          from fixtures f
+          join teams th on th.id = f.home_team_id
+          join teams ta on ta.id = f.away_team_id
+         where f.status = 'scheduled'
+           and f.kickoff_at between now() and now() + interval '48 hours'
+           and exists (select 1 from odds_snapshots o where o.fixture_id = f.id)
+         order by f.kickoff_at
+        """
+    )
+    for f in fixtures:
+        h = await get_features_as_of(db, str(f["home_team_id"]), f["kickoff_at"])
+        a = await get_features_as_of(db, str(f["away_team_id"]), f["kickoff_at"])
+        if h is None or a is None:
+            continue
+        lam_h, lam_a = model.expected_goals(h, a)
+        pr = model.price(h, a)
+        print(f"{f['home']} v {f['away']}   (kickoff {f['kickoff_at']:%Y-%m-%d})")
+        print(f"  {f['home']:<22} xgF {h.xg_for:.2f}  xgA {h.xg_against:.2f}  "
+              f"gF {h.goals_for:.2f}  gA {h.goals_against:.2f}  ppg {h.points_per_game:.2f}  "
+              f"n={h.matches_used}  last={h.latest_match_at:%Y-%m-%d}")
+        print(f"  {f['away']:<22} xgF {a.xg_for:.2f}  xgA {a.xg_against:.2f}  "
+              f"gF {a.goals_for:.2f}  gA {a.goals_against:.2f}  ppg {a.points_per_game:.2f}  "
+              f"n={a.matches_used}  last={a.latest_match_at:%Y-%m-%d}")
+        print(f"  -> lambda home {lam_h:.2f}, away {lam_a:.2f}   "
+              f"P(home) {pr.home:.0%}  P(draw) {pr.draw:.0%}  P(away) {pr.away:.0%}")
+        print()
+
+    await db.close()
+    return 0
+
+
 if __name__ == "__main__":
-    mode = _edges if "--edges" in sys.argv else _run
+    if "--explain" in sys.argv:
+        mode = _explain
+    elif "--edges" in sys.argv:
+        mode = _edges
+    else:
+        mode = _run
     raise SystemExit(asyncio.run(mode()))
