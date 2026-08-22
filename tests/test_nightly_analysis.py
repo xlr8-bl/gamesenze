@@ -123,6 +123,10 @@ async def test_only_the_best_edge_row_drafts_and_only_once_per_fixture(monkeypat
         return _window()  # real window; price() is patched below
 
     class _FakePrices:
+        expected_home_goals = 1.5
+        expected_away_goals = 1.1
+        btts_yes = 0.5
+
         def probability(self, market, selection):
             # Home is the value side; draw and away sit at/below the market.
             return {"home": 0.60, "draw": 0.24, "away": 0.16}.get(selection)

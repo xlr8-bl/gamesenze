@@ -46,6 +46,63 @@ def _venue_form(f: FeatureWindow, home: bool) -> str:
     return f"{_form(f.points_per_game)} {where}"
 
 
+def _finishing(f: FeatureWindow) -> str | None:
+    """Goals scored against the chances created — clinical, or wasteful.
+
+    A team scoring well above the quality of its chances has been riding its
+    finishing, which tends not to last; well below, and better output is due.
+    Returns None when the two are close enough not to be worth a line.
+    """
+    if f.xg_for <= 0:
+        return None
+    ratio = f.goals_for / f.xg_for
+    if ratio >= 1.2:
+        return "have been clinical, scoring more than their chances have merited"
+    if ratio <= 0.8:
+        return "have been wasteful in front of goal, with more goals in them than the table shows"
+    return None
+
+
+def _pressing(f: FeatureWindow) -> str | None:
+    """Pressing intensity from PPDA, when the data carries it (lower = higher press)."""
+    if f.ppda is None:
+        return None
+    if f.ppda < 9:
+        return "press high and hunt the ball back quickly"
+    if f.ppda > 14:
+        return "sit off and stay compact rather than press"
+    return None
+
+
+def _model_outlook(prices) -> str | None:
+    """The model's wider read on the game, in plain terms — no numbers shown.
+
+    Uses the same price object the pick came from to speak to both-teams-to-
+    score and the likely goal count, so the card carries a view on the shape
+    of the match beyond the one selection being backed.
+    """
+    if prices is None:
+        return None
+    total = prices.expected_home_goals + prices.expected_away_goals
+    btts = prices.btts_yes
+
+    goals = (
+        "shapes up as an open, high-scoring game"
+        if total >= 2.9
+        else "points to a cagey, low-scoring night"
+        if total <= 2.15
+        else "looks like a middling one for goals"
+    )
+    both = (
+        "with both ends likely to find the net"
+        if btts >= 0.58
+        else "and one side looks the likelier to keep it tight"
+        if btts <= 0.45
+        else "with a goal in both sides as likely as not"
+    )
+    return f"Our wider read is that it {goals}, {both}."
+
+
 def confidence_from(edge: float, published_prob: float) -> str:
     """Map the edge and our conviction to the three published tiers."""
     if edge >= 0.10 and published_prob >= 0.5:
@@ -75,11 +132,15 @@ def write_reasoning(
     market: str,
     selection: str,
     excluded_labels: list[str] | None = None,
+    prices=None,
 ) -> str:
     """Assemble the verdict lead plus the argument, in plain football terms.
 
     The first sentence is the call; splitRead() on the frontend renders it
-    louder than the rest, so it must stand alone as the verdict.
+    louder than the rest, so it must stand alone as the verdict. When the
+    model's `prices` are passed, the read also carries finishing quality,
+    pressing and the model's wider outlook (both-teams and goal count) — using
+    the fuller signal set, not just attack/defence/form.
     """
     subject = _subject(market, selection, home_name, away_name)
     sel = selection.lower()
@@ -112,6 +173,17 @@ def write_reasoning(
         f"{away_name} have been {a_attack} in attack and {a_def} defensively, "
         f"{a_form}.",
     ]
+
+    # 2b) The fuller signal set: finishing quality, pressing, and — for the more
+    # notable side of each — weave a line in rather than listing every metric.
+    for name, f in ((home_name, home), (away_name, away)):
+        finish, press = _finishing(f), _pressing(f)
+        if finish and press:
+            body.append(f"{name} {finish}, and they {press}.")
+        elif finish:
+            body.append(f"{name} {finish}.")
+        elif press:
+            body.append(f"{name} {press}.")
 
     # 3) Tie it to the actual call so the argument matches the pick.
     if mk == "1x2" and sel == "home":
@@ -146,6 +218,11 @@ def write_reasoning(
             if sel == "yes"
             else "One of these defences should hold, and that is the value here."
         )
+
+    # 3b) The model's wider outlook on the match shape (both-teams, goal count).
+    outlook = _model_outlook(prices)
+    if outlook:
+        body.append(outlook)
 
     # 4) Early-season honesty: name what we deliberately left out.
     if excluded_labels:

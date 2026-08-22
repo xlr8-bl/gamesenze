@@ -51,6 +51,10 @@ class FeatureWindow:
     xg_sd: float
     points_per_game: float
     latest_match_at: datetime
+    # Passes allowed per defensive action — pressing intensity. Optional: some
+    # sources do not carry it, and a team with no PPDA rows gets None rather
+    # than a fabricated average.
+    ppda: float | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -103,6 +107,7 @@ def compute_features(
         3 if f > a else (1 if f == a else 0)
         for f, a in zip(gf, ga, strict=True)
     ]
+    ppdas = [float(r["ppda"]) for r in rows if r.get("ppda") is not None]
 
     return FeatureWindow(
         team_id=team_id,
@@ -115,6 +120,7 @@ def compute_features(
         xg_sd=statistics.pstdev(xgs) if len(xgs) > 1 else 0.0,
         points_per_game=statistics.fmean(points),
         latest_match_at=max(r["kickoff_at"] for r in rows),
+        ppda=statistics.fmean(ppdas) if ppdas else None,
     )
 
 
@@ -137,7 +143,7 @@ async def get_features_as_of(
     rows = await db.fetch(
         """
         select fixture_id, team_id, kickoff_at, status, xg, xga,
-               goals_for, goals_against
+               goals_for, goals_against, ppda
           from team_match_stats
          where team_id = $1
            and kickoff_at < $2

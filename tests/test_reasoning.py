@@ -52,3 +52,48 @@ def test_confidence_tiers():
     assert confidence_from(0.04, 0.35) == "lean"
     # A big edge on a low probability is not a best bet.
     assert confidence_from(0.12, 0.30) == "strong_lean"
+
+
+def test_reasoning_uses_finishing_pressing_and_the_model_outlook():
+    from gamesenze.analysis.model import MatchModel
+
+    home = FeatureWindow(
+        team_id="h", as_of=datetime.now(timezone.utc), matches_used=10,
+        xg_for=1.7, xg_against=1.2, goals_for=2.2, goals_against=1.0,
+        xg_sd=0.3, points_per_game=1.7, latest_match_at=datetime.now(timezone.utc),
+        ppda=8.0,  # high press
+    )
+    away = FeatureWindow(
+        team_id="a", as_of=datetime.now(timezone.utc), matches_used=10,
+        xg_for=1.4, xg_against=1.6, goals_for=0.9, goals_against=1.7,
+        xg_sd=0.3, points_per_game=1.0, latest_match_at=datetime.now(timezone.utc),
+        ppda=15.0,  # sits off
+    )
+    prices = MatchModel().price(home, away)
+    text = write_reasoning(
+        home_name="Home", away_name="Away", home=home, away=away,
+        market="1x2", selection="home", prices=prices,
+    )
+    low = text.lower()
+    assert "clinical" in low          # home over-performing xG
+    assert "wasteful" in low          # away under-performing xG
+    assert "press high" in low        # home PPDA
+    assert "sit off" in low           # away PPDA
+    assert "wider read" in low        # model outlook (BTTS + goals)
+    # Still no method terms leaked in the richer text.
+    for banned in ("xg", "ppda", "poisson", "probability", "%"):
+        assert banned not in low
+
+
+def test_pressing_is_silent_when_ppda_is_absent():
+    home = FeatureWindow(
+        team_id="h", as_of=datetime.now(timezone.utc), matches_used=10,
+        xg_for=1.5, xg_against=1.3, goals_for=1.5, goals_against=1.3,
+        xg_sd=0.3, points_per_game=1.4, latest_match_at=datetime.now(timezone.utc),
+        ppda=None,
+    )
+    text = write_reasoning(
+        home_name="Home", away_name="Away", home=home, away=home,
+        market="1x2", selection="home",
+    )
+    assert "press" not in text.lower()

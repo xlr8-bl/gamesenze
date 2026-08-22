@@ -130,6 +130,7 @@ async def main(ctx: JobContext) -> int:
             market=row["market"],
             selection=row["selection"],
             excluded_labels=excluded_labels,
+            prices=prices,
         )
         confidence = confidence_from(choice.edge, choice.published_prob)
 
