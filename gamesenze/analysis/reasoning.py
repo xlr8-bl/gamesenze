@@ -133,6 +133,7 @@ def write_reasoning(
     selection: str,
     excluded_labels: list[str] | None = None,
     prices=None,
+    model_prob: float | None = None,
 ) -> str:
     """Assemble the verdict lead plus the argument, in plain football terms.
 
@@ -185,17 +186,30 @@ def write_reasoning(
         elif press:
             body.append(f"{name} {press}.")
 
-    # 3) Tie it to the actual call so the argument matches the pick.
-    if mk == "1x2" and sel == "home":
-        body.append(
-            f"On the balance of the two, {home_name} are the side better set up to "
-            "take this, and the price is longer than that edge deserves."
-        )
-    elif mk == "1x2" and sel == "away":
-        body.append(
-            f"{away_name} carry enough to trouble this hosts, and the market has been "
-            "slow to give them their due."
-        )
+    # 3) Tie it to the actual call so the argument matches the pick — and tell
+    # the truth about WHERE the value is. A pick can be value because we rate
+    # the side clearly higher (a mismatch), or because the price treats them as
+    # bigger outsiders than they are (a mispricing). model_prob tells us which,
+    # so the read stops claiming a dominance it does not have.
+    if mk in ("1x2",) and sel in ("home", "away"):
+        backed = home_name if sel == "home" else away_name
+        mp = model_prob if model_prob is not None else 0.5
+        if mp >= 0.55:
+            body.append(
+                f"On the balance of the two, {backed} are clearly the side better set "
+                "up to take this, and the price is longer than that edge deserves."
+            )
+        elif mp >= 0.38:
+            body.append(
+                f"This is closer to even than the price makes out: {backed} are no "
+                "outsiders here, and the gap between that and the odds is the bet — "
+                "the value is in the price, not a mismatch."
+            )
+        else:
+            body.append(
+                f"{backed} are underdogs, but less so than these odds imply — enough "
+                "of a gap that at this price it is worth being with them."
+            )
     elif mk == "1x2" and sel == "draw":
         body.append(
             "Two sides this evenly matched, with neither defence giving much away, "

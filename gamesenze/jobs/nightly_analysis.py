@@ -131,6 +131,7 @@ async def main(ctx: JobContext) -> int:
             selection=row["selection"],
             excluded_labels=excluded_labels,
             prices=prices,
+            model_prob=choice.model_prob,
         )
         confidence = confidence_from(choice.edge, choice.published_prob)
 
