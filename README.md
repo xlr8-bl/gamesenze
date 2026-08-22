@@ -93,6 +93,11 @@ python -m gamesenze.jobs.doctor   # verify .env and the DB connection before any
 python -m gamesenze.jobs.migrate
 python -m gamesenze.jobs.seed   # teams and aliases BEFORE any ingestion
 
+# Stats over plain HTTP (seconds, no browser) — the fast path the model
+# needs for its sample gate. Replaces weekly_scrape + stats_sync for
+# Understat; FBref still needs the browser but the model does not use it.
+python -m gamesenze.jobs.understat_sync
+
 # Crests and competition photography for the frontend (one-off, re-run when
 # the club list changes). resolve_media writes db/seed/media.json from
 # TheSportsDB by name; fetch_media downloads and optimises it into
