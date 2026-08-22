@@ -11,6 +11,7 @@ import { Empty, Loading, Notice, Result, Signed, Stat } from "@/components/ui";
 import { CompetitionMark } from "@/components/sport";
 import UnitsChart from "@/components/UnitsChart";
 import PageHead from "@/components/PageHead";
+import { selectionLabel, marketLabel } from "@/lib/analysis";
 import { CountUp, Reveal } from "@/components/motion";
 
 /**
@@ -161,9 +162,9 @@ export default function RecordPage() {
                     </div>
                   </td>
                   <td>
-                    {r.selection}
+                    {selectionLabel(r.selection, r.home_team, r.away_team)}
                     <div style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>
-                      {r.market}
+                      {marketLabel(r.market)}
                     </div>
                   </td>
                   <td className="right num">

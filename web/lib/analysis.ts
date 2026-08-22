@@ -93,3 +93,52 @@ export function splitRead(text: string | null): { lead: string; body: string } {
     body: trimmed.slice(end + 1).trim(),
   };
 }
+
+/**
+ * Turn a stored selection into the words a bettor reads on the slip.
+ *
+ * The pipeline stores selections positionally — "home", "away", "draw",
+ * "over", "under", "yes", "no" — because that is what the model prices and
+ * what settles cleanly regardless of which club is which. On the card the
+ * pick is the headline, so a positional token becomes the actual team name
+ * (from the fixture) or the plain-language market outcome. Anything already
+ * written out (older rows, demo snapshots) passes through untouched.
+ */
+export function selectionLabel(
+  selection: string | null,
+  home: string | null | undefined,
+  away: string | null | undefined,
+): string {
+  if (!selection) return "";
+  switch (selection.trim().toLowerCase()) {
+    case "home":
+      return home || "Home";
+    case "away":
+      return away || "Away";
+    case "draw":
+      return "Draw";
+    case "over":
+      return "Over 2.5 goals";
+    case "under":
+      return "Under 2.5 goals";
+    case "yes":
+      return "Both teams to score";
+    case "no":
+      return "Not both teams to score";
+    default:
+      return selection;
+  }
+}
+
+/**
+ * The market a pick sits in, named the way a slip names it rather than by its
+ * internal key. Unknown or already-friendly values pass through.
+ */
+export function marketLabel(market: string | null): string {
+  if (!market) return "";
+  const m = market.trim().toLowerCase();
+  if (m === "1x2") return "Match result";
+  if (m === "btts") return "Both teams to score";
+  if (m.startsWith("ou_")) return "Total goals";
+  return market;
+}

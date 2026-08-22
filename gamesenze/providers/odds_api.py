@@ -98,6 +98,55 @@ class OddsApi:
         )
 
 
+def _normalise_market(
+    market_key: str,
+    selection: str,
+    *,
+    home_team: str,
+    away_team: str,
+    point: float | None,
+) -> tuple[str, str] | None:
+    """Map a vendor market/outcome to the model's canonical keys.
+
+    The model (analysis/model.py) and the schema
+    (odds_snapshots.selection is documented "e.g. 'home', 'over', 'yes'")
+    speak in positional 1X2 and named totals/BTTS. The Odds API speaks in
+    `h2h` with team-name outcomes and `totals`/`btts` with Over/Under/Yes/No.
+    Without this translation `MatchPrices.probability()` returns None for
+    every row and nightly_analysis can never draft a pick.
+
+    Returns (market, selection) lower-cased for the model's dict lookup, or
+    None for a market we do not model (stored raw by the caller so the audit
+    still sees it, but never matched to a price).
+    """
+    key = (market_key or "").lower()
+    name = (selection or "").strip()
+
+    if key in ("h2h", "1x2"):
+        if name == home_team:
+            return "1x2", "home"
+        if name == away_team:
+            return "1x2", "away"
+        if name.lower() in ("draw", "tie"):
+            return "1x2", "draw"
+        return None
+
+    if key in ("totals", "ou", "over_under"):
+        side = name.lower()
+        if side not in ("over", "under") or point is None:
+            return None
+        # 2.5 is the only total the model prices; others are stored raw.
+        return f"ou_{point:g}", side
+
+    if key in ("btts", "both_teams_to_score"):
+        side = name.lower()
+        if side in ("yes", "no"):
+            return "btts", side
+        return None
+
+    return None
+
+
 def parse_odds(
     raw: dict[str, Any], *, captured_at: datetime, window_label: str
 ) -> tuple[list[dict[str, Any]], list[str]]:
@@ -134,11 +183,25 @@ def parse_odds(
                     )
                     continue
 
+                mapped = _normalise_market(
+                    market_key,
+                    selection,
+                    home_team=raw.get("home_team", ""),
+                    away_team=raw.get("away_team", ""),
+                    point=outcome.get("point"),
+                )
+                if mapped is None:
+                    # A market we do not model (e.g. a non-2.5 total, or an
+                    # unexpected outcome name). Not an error worth an audit
+                    # rejection — just nothing to price against.
+                    continue
+                market_norm, selection_norm = mapped
+
                 rows.append(
                     {
                         "bookmaker": book_name,
-                        "market": market_key,
-                        "selection": selection,
+                        "market": market_norm,
+                        "selection": selection_norm,
                         "decimal_odds": float(price),
                         "captured_at": captured_at,
                         "window_label": window_label,

@@ -2,6 +2,7 @@
 
 import { MAX_LEGS, type Leg } from "./combo";
 import type { Pick } from "./supabase";
+import { selectionLabel, marketLabel } from "./analysis";
 
 /**
  * The in-progress combo lives in the browser, not in our database.
@@ -38,8 +39,8 @@ export function addToCombo(pick: Pick): Leg[] {
     pickId: pick.id,
     fixtureId: pick.fixture_id,
     label: `${pick.home_team} v ${pick.away_team}`,
-    market: pick.market,
-    selection: pick.selection,
+    market: marketLabel(pick.market),
+    selection: selectionLabel(pick.selection, pick.home_team, pick.away_team),
     odds: Number(pick.latest_odds ?? pick.capture_odds ?? 0),
     bookmaker: pick.latest_bookmaker ?? pick.capture_bookmaker ?? "unknown",
     oddsAsOf: pick.latest_odds_at ?? pick.published_at ?? new Date().toISOString(),

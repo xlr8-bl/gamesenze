@@ -20,7 +20,7 @@ import {
   KickoffLine,
   PriceButton,
 } from "@/components/sport";
-import { confidenceLabel, factorLabel, splitRead } from "@/lib/analysis";
+import { confidenceLabel, factorLabel, splitRead, selectionLabel, marketLabel } from "@/lib/analysis";
 import { competitionIdentity } from "@/lib/identity";
 import { fixturePhoto } from "@/lib/media";
 
@@ -279,10 +279,10 @@ function PickRow({
                 textTransform: "uppercase",
               }}
             >
-              {pick.selection}
+              {selectionLabel(pick.selection, pick.home_team, pick.away_team)}
             </div>
             <div className="cond" style={{ color: "var(--ink-3)", fontSize: "1rem", letterSpacing: "0.03em", textTransform: "uppercase" }}>
-              {pick.market}
+              {marketLabel(pick.market)}
             </div>
           </div>
 
@@ -302,7 +302,7 @@ function PickRow({
                 selected={added}
                 disabled={disabled}
                 onClick={onAdd}
-                label={`${added ? "Remove" : "Add"} ${pick.selection} at ${odds?.toFixed(2)} ${added ? "from" : "to"} your combo`}
+                label={`${added ? "Remove" : "Add"} ${selectionLabel(pick.selection, pick.home_team, pick.away_team)} at ${odds?.toFixed(2)} ${added ? "from" : "to"} your combo`}
               />
               <div style={{ marginTop: 5, minHeight: 14 }}>
                 <Drift from={pick.capture_odds} to={pick.latest_odds} />
