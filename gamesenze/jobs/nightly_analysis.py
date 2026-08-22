@@ -63,6 +63,13 @@ async def main(ctx: JobContext) -> int:
                 where q.entity_type = 'fixture' and q.entity_id = f.id
                   and q.severity = 'block' and q.resolved_at is null
            )
+           -- Don't re-draft a fixture that already has a live pick: one pick
+           -- per fixture, so re-running never stacks the board.
+           and not exists (
+               select 1 from picks pk
+                where pk.fixture_id = f.id
+                  and pk.status in ('published', 'settled')
+           )
         """
     )
 
@@ -86,6 +93,23 @@ async def main(ctx: JobContext) -> int:
                select id from fixtures
                 where status = 'scheduled'
                   and kickoff_at between now() and now() + interval '48 hours'
+           )
+        """
+    )
+
+    # One live pick per fixture. Repeated nightly+approve cycles published a
+    # fresh pick each time while the earlier ones stayed live, so a fixture
+    # could show on the board several times. Retire the older duplicates,
+    # keeping only the most recently published pick for each fixture.
+    await ctx.db.execute(
+        """
+        update picks p set status = 'void'
+         where p.status = 'published'
+           and exists (
+               select 1 from picks q
+                where q.fixture_id = p.fixture_id and q.status = 'published'
+                  and (q.published_at > p.published_at
+                       or (q.published_at = p.published_at and q.id > p.id))
            )
         """
     )
