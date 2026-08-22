@@ -140,5 +140,86 @@ async def _run() -> int:
     return 0
 
 
+async def _edges() -> int:
+    """Replay nightly_analysis's candidate loop and print every edge.
+
+    Answers the follow-up question: for the covered-league fixtures that DO
+    pass the sample gate, does the model simply find no value (a legit quiet
+    day), or is the pricing off? Prints market, our prob, implied prob and
+    edge for each priced selection, and flags the ones that clear the 4%
+    threshold nightly needs.
+    """
+    from gamesenze.analysis.model import MatchModel
+    from gamesenze.backtest.features import get_features_as_of
+    from gamesenze.odds.math import edge as edge_fn
+
+    s = Settings.from_env()
+    db = await AsyncpgDb.connect(s.database_url)
+    model = MatchModel()
+
+    rows = await db.fetch(
+        """
+        select f.id, f.kickoff_at, f.home_team_id, f.away_team_id,
+               th.canonical_name home, ta.canonical_name away,
+               o.market, o.selection, o.decimal_odds
+          from fixtures f
+          join teams th on th.id = f.home_team_id
+          join teams ta on ta.id = f.away_team_id
+          join lateral (
+              select market, selection, decimal_odds
+                from odds_snapshots
+               where fixture_id = f.id
+               order by captured_at desc limit 20
+          ) o on true
+         where f.status = 'scheduled'
+           and f.kickoff_at between now() and now() + interval '48 hours'
+         order by f.kickoff_at
+        """
+    )
+    by_fix: dict = {}
+    for r in rows:
+        by_fix.setdefault(str(r["id"]), []).append(r)
+
+    print(f"{len(by_fix)} scheduled fixture(s) with odds in the next 48h")
+    priced = drafted = gated = 0
+    best_overall = 0.0
+    for rs in by_fix.values():
+        f0 = rs[0]
+        home = await get_features_as_of(db, str(f0["home_team_id"]), f0["kickoff_at"])
+        away = await get_features_as_of(db, str(f0["away_team_id"]), f0["kickoff_at"])
+        if home is None or away is None:
+            gated += 1
+            continue
+        priced += 1
+        prices = model.price(home, away)
+        best = None
+        for r in rs:
+            our = prices.probability(r["market"], r["selection"])
+            if our is None:
+                continue
+            e = edge_fn(our, float(r["decimal_odds"]))
+            if best is None or e > best[0]:
+                best = (e, r["market"], r["selection"], our, float(r["decimal_odds"]))
+        if best is None:
+            print(f"  {f0['home']} v {f0['away']}: priced, no market mapped")
+            continue
+        e, mkt, sel, our, dec = best
+        best_overall = max(best_overall, e)
+        hit = "  <-- DRAFTS" if e >= 0.04 else ""
+        if e >= 0.04:
+            drafted += 1
+        print(f"  {f0['home']} v {f0['away']}: best {sel} [{mkt}] "
+              f"our {our:.0%} vs implied {1/dec:.0%} @ {dec:.2f}  edge {e:+.1%}{hit}")
+
+    print()
+    print(f"gated (no stats): {gated}   priced: {priced}   "
+          f"would draft (edge>=4%): {drafted}   best edge seen: {best_overall:+.1%}")
+    await db.close()
+    return 0
+
+
+import sys
+
 if __name__ == "__main__":
-    raise SystemExit(asyncio.run(_run()))
+    mode = _edges if "--edges" in sys.argv else _run
+    raise SystemExit(asyncio.run(mode()))
