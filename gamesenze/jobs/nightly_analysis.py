@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 import logging
 
+from ..analysis.dixon_coles import fit_dixon_coles
 from ..analysis.model import MatchModel
-from ..analysis.ratings import fit_ratings
 from ..analysis.reasoning import confidence_from, write_reasoning
 from ..analysis.selection import select_pick
 from ..analysis.stakes import StakesInput, stakes_tags
@@ -90,30 +90,28 @@ async def main(ctx: JobContext) -> int:
         """
     )
 
-    # Fit opponent-adjusted attack/defence ratings once for the whole run, from
-    # every finished match in the last ~14 months. This is the model actually
-    # analysing the data: a team's level is measured against the quality of the
-    # opponents it faced, with recent form weighted up. See analysis/ratings.py.
+    # Fit the Dixon-Coles model once for the whole run, from every finished
+    # match in the last ~14 months. This is the real model: attack and defence
+    # per team, a home effect and a low-score correlation term, all estimated
+    # by maximum likelihood with recent matches weighted up — not hand-tuned.
+    # Back-tested separately by jobs/evaluate.py. See analysis/dixon_coles.py.
     now = ctx.clock.now()
     match_rows = await ctx.db.fetch(
         """
-        select f.home_team_id as home_id, f.away_team_id as away_id,
-               f.kickoff_at, hs.xg as home_xg, aws.xg as away_xg
-          from fixtures f
-          join team_match_stats hs
-            on hs.fixture_id = f.id and hs.team_id = f.home_team_id
-          join team_match_stats aws
-            on aws.fixture_id = f.id and aws.team_id = f.away_team_id
-         where f.status = 'finished'
-           and f.kickoff_at < $1
-           and f.kickoff_at > $1 - interval '430 days'
-           and hs.xg is not null and aws.xg is not null
+        select home_team_id as home_id, away_team_id as away_id, kickoff_at,
+               home_goals, away_goals
+          from fixtures
+         where status = 'finished'
+           and home_goals is not null and away_goals is not null
+           and home_team_id is not null and away_team_id is not null
+           and kickoff_at < $1
+           and kickoff_at > $1 - interval '430 days'
         """,
         now,
     )
-    ratings = fit_ratings([dict(r) for r in match_rows], as_of=now)
-    log.info("ratings fitted from %d match(es), %d team(s) rated",
-             len(match_rows), len(ratings.attack))
+    dc = fit_dixon_coles([dict(r) for r in match_rows], as_of=now)
+    log.info("Dixon-Coles fitted from %d match(es), %d team(s) rated, "
+             "home effect %.3f", len(match_rows), len(dc.attack), dc.home)
 
     by_fixture: dict[str, list] = {}
     for row in candidates:
@@ -128,12 +126,13 @@ async def main(ctx: JobContext) -> int:
             log.info("fixture %s: sample below the §5.4 minimum, skipping", fixture_id)
             continue
 
-        # Price from the opponent-adjusted ratings when both sides are rated;
+        # Price from the fitted Dixon-Coles model when both sides are rated;
         # fall back to each team's own averages only when one is not.
-        eg = ratings.expected_goals(
+        prices = dc.match_prices(
             str(first["home_team_id"]), str(first["away_team_id"])
         )
-        prices = model.price_from_goals(*eg) if eg else model.price(home, away)
+        if prices is None:
+            prices = model.price(home, away)
 
         # De-vig, shrink toward the market, and refuse longshots and
         # implausible edges — a raw argmax over prob*odds-1 only ever surfaces

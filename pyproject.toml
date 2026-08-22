@@ -10,6 +10,10 @@ requires-python = ">=3.11"
 dependencies = [
     "asyncpg>=0.29",
     "httpx>=0.27",
+    # The Dixon-Coles model is fit by maximum likelihood (scipy.optimize) over
+    # numpy arrays. nightly_analysis and jobs/evaluate both need them.
+    "numpy>=1.26",
+    "scipy>=1.11",
 ]
 
 [project.optional-dependencies]
