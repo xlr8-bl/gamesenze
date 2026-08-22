@@ -123,6 +123,19 @@ npx wrangler deploy
 cd web && npm ci && npm run build     # static export to web/out
 ```
 
+To see the whole site running with no database or keys at all — populated with a
+snapshot of demo fixtures, live scores and record — build it in demo mode and
+serve the export:
+
+```bash
+cd web && npm ci
+npm run preview        # cross-env NEXT_PUBLIC_DEMO=1 build, then serves on :3100
+```
+
+Open http://localhost:3100. This is the real frontend, not a mock; it just reads
+bundled snapshots from `web/public/demo` instead of Supabase. A normal build
+(`npm run build`) never sets the flag, so production ships none of that data.
+
 ## Operational notes
 
 **Team names come first.** "Man Utd" / "Manchester Utd" / "Manchester United" /

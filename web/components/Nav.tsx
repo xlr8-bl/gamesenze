@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { List, X } from "@phosphor-icons/react";
-import { fetchLive, isConfigured } from "@/lib/supabase";
+import { fetchLive } from "@/lib/supabase";
 
 const LINKS = [
   { href: "/live/", label: "Live" },
@@ -26,7 +26,6 @@ export default function Nav() {
   const [liveCount, setLiveCount] = useState(0);
 
   useEffect(() => {
-    if (!isConfigured) return;
     let on = true;
     const load = () => fetchLive().then((m) => on && setLiveCount(m.length)).catch(() => {});
     load();

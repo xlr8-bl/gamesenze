@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "preview": "cross-env NEXT_PUBLIC_DEMO=1 next build && npx --yes serve out -l 3100"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -19,6 +20,7 @@
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
+    "cross-env": "^10.1.0",
     "typescript": "^5.7.2"
   }
 }

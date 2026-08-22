@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchLive, isConfigured, type LiveMatch } from "@/lib/supabase";
+import { fetchLive, type LiveMatch } from "@/lib/supabase";
 import { Empty, Loading, Notice } from "@/components/ui";
 import { LiveCard } from "@/components/live";
 import PageHead from "@/components/PageHead";
@@ -19,10 +19,8 @@ export default function Live() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isConfigured) {
-      setMatches([]);
-      return;
-    }
+    // fetchLive returns demo rows under a demo build, real rows when
+    // configured, and an empty list otherwise, so the effect always runs.
     let live = true;
     const load = () =>
       fetchLive()

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
-import { fetchBoard, fetchLive, isConfigured, type LiveMatch, type Pick } from "@/lib/supabase";
+import { fetchBoard, fetchLive, type LiveMatch, type Pick } from "@/lib/supabase";
 import { competitionIdentity, fixtureColours } from "@/lib/identity";
 import { fixturePhoto, teamMedia } from "@/lib/media";
 import { CountUp } from "./motion";
@@ -22,10 +22,6 @@ export default function HomeLive() {
   const [liveMatches, setLiveMatches] = useState<LiveMatch[]>([]);
 
   useEffect(() => {
-    if (!isConfigured) {
-      setPicks([]);
-      return;
-    }
     let on = true;
     fetchBoard()
       .then((rows) => on && setPicks(rows))

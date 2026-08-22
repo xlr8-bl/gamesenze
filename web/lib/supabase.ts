@@ -11,6 +11,30 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 export const isConfigured = Boolean(url && anonKey);
 
+/**
+ * Demo mode.
+ *
+ * A build made with NEXT_PUBLIC_DEMO=1 and no Supabase configured serves the
+ * whole site off the bundled snapshots in lib/demo, so `npx serve out` shows a
+ * fully populated preview with no backend to stand up. The flag is a build
+ * constant, so a normal production build dead-code-eliminates the branch and
+ * never bundles the demo data.
+ */
+const DEMO = process.env.NEXT_PUBLIC_DEMO === "1";
+
+async function demoRows<T>(view: string): Promise<T[]> {
+  // Fetched from /public at runtime, not imported, so a production build's
+  // JavaScript bundle carries no demo data at all: prod never sets the flag,
+  // so this is never called and the files are never requested.
+  try {
+    const res = await fetch(`/demo/${view}.json`);
+    return res.ok ? ((await res.json()) as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+
 let client: SupabaseClient | null = null;
 
 /**
@@ -72,6 +96,7 @@ export type BudgetStatus = {
 };
 
 export async function fetchBoard(): Promise<Pick[]> {
+  if (DEMO && !isConfigured) return demoRows<Pick>("v_published_picks");
   if (!isConfigured) return [];
   const { data, error } = await getSupabase()
     .from("v_published_picks")
@@ -82,6 +107,7 @@ export async function fetchBoard(): Promise<Pick[]> {
 }
 
 export async function fetchBudgetStatus(): Promise<BudgetStatus[]> {
+  if (DEMO && !isConfigured) return demoRows<BudgetStatus>("v_budget_status");
   if (!isConfigured) return [];
   const { data, error } = await getSupabase()
     .from("v_budget_status")
@@ -134,6 +160,7 @@ export type RecordSummary = {
 };
 
 export async function fetchRecord(limit = 200): Promise<RecordRow[]> {
+  if (DEMO && !isConfigured) return (await demoRows<RecordRow>("v_pick_record")).slice(0, limit);
   if (!isConfigured) return [];
   const { data, error } = await getSupabase()
     .from("v_pick_record")
@@ -145,6 +172,7 @@ export async function fetchRecord(limit = 200): Promise<RecordRow[]> {
 }
 
 export async function fetchRecordSummary(): Promise<RecordSummary[]> {
+  if (DEMO && !isConfigured) return demoRows<RecordSummary>("v_record_summary");
   if (!isConfigured) return [];
   const { data, error } = await getSupabase().from("v_record_summary").select("*");
   if (error) throw error;
@@ -185,6 +213,7 @@ export type LiveMatch = {
 };
 
 export async function fetchLive(): Promise<LiveMatch[]> {
+  if (DEMO && !isConfigured) return demoRows<LiveMatch>("v_live_board");
   if (!isConfigured) return [];
   const { data, error } = await getSupabase().from("v_live_board").select("*");
   if (error) throw error;
