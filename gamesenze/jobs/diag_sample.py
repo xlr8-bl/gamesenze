@@ -270,8 +270,55 @@ async def _explain() -> int:
     return 0
 
 
+async def _published() -> int:
+    """List what is actually on the board, with each pick's stored numbers.
+
+    Ground truth, read straight from the picks table: our published
+    probability, the price we captured, and the edge those two imply. Every
+    row should carry a positive edge inside the sane band — if one does not,
+    it slipped through and needs looking at.
+    """
+    s = Settings.from_env()
+    db = await AsyncpgDb.connect(s.database_url)
+    rows = await db.fetch(
+        """
+        select p.market, p.selection, p.internal_prob, p.capture_odds,
+               p.confidence_tag, p.reasoning_full,
+               ht.canonical_name home, at.canonical_name away, f.kickoff_at
+          from picks p
+          join fixtures f on f.id = p.fixture_id
+          left join teams ht on ht.id = f.home_team_id
+          left join teams at on at.id = f.away_team_id
+         where p.status = 'published'
+         order by f.kickoff_at
+        """
+    )
+    if not rows:
+        print("no published picks")
+        await db.close()
+        return 0
+
+    print(f"{len(rows)} published pick(s) on the board:\n")
+    for r in rows:
+        prob = float(r["internal_prob"]) if r["internal_prob"] is not None else 0.0
+        odds = float(r["capture_odds"]) if r["capture_odds"] is not None else 0.0
+        edge = prob * odds - 1 if odds else 0.0
+        flag = "" if 0.0 <= edge <= 0.20 else "   <-- OUT OF BAND"
+        lead = (r["reasoning_full"] or "").split(".")[0]
+        print(f"  {r['kickoff_at']:%m-%d %H:%M}  {r['home']} v {r['away']}")
+        print(f"    {r['selection']} [{r['market']}] @ {odds:.2f}  "
+              f"our number {prob:.0%}  edge {edge:+.1%}  "
+              f"({r['confidence_tag']}){flag}")
+        print(f"    \"{lead}.\"")
+        print()
+    await db.close()
+    return 0
+
+
 if __name__ == "__main__":
-    if "--explain" in sys.argv:
+    if "--published" in sys.argv:
+        mode = _published
+    elif "--explain" in sys.argv:
         mode = _explain
     elif "--edges" in sys.argv:
         mode = _edges

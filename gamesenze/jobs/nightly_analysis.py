@@ -74,6 +74,21 @@ async def main(ctx: JobContext) -> int:
     # a second qualifying bookmaker row for the same fixture from drafting a
     # second pick. One fixture now yields at most one pick: whichever
     # qualifying row has the best edge.
+    # Clear our own un-actioned drafts for this window before re-drafting, so a
+    # re-run refreshes rather than stacks duplicates. Only unreviewed drafts
+    # go — anything a person has published or signed off is left untouched.
+    await ctx.db.execute(
+        """
+        delete from picks
+         where status = 'draft' and reviewed_by is null
+           and fixture_id in (
+               select id from fixtures
+                where status = 'scheduled'
+                  and kickoff_at between now() and now() + interval '48 hours'
+           )
+        """
+    )
+
     by_fixture: dict[str, list] = {}
     for row in candidates:
         by_fixture.setdefault(str(row["id"]), []).append(row)
