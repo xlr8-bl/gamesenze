@@ -279,7 +279,7 @@ function PickRow({
                 textTransform: "uppercase",
               }}
             >
-              {selectionLabel(pick.selection, pick.home_team, pick.away_team)}
+              {selectionLabel(pick.selection, pick.home_team, pick.away_team, pick.market)}
             </div>
             <div className="cond" style={{ color: "var(--ink-3)", fontSize: "1rem", letterSpacing: "0.03em", textTransform: "uppercase" }}>
               {marketLabel(pick.market)}
@@ -302,7 +302,7 @@ function PickRow({
                 selected={added}
                 disabled={disabled}
                 onClick={onAdd}
-                label={`${added ? "Remove" : "Add"} ${selectionLabel(pick.selection, pick.home_team, pick.away_team)} at ${odds?.toFixed(2)} ${added ? "from" : "to"} your combo`}
+                label={`${added ? "Remove" : "Add"} ${selectionLabel(pick.selection, pick.home_team, pick.away_team, pick.market)} at ${odds?.toFixed(2)} ${added ? "from" : "to"} your combo`}
               />
               <div style={{ marginTop: 5, minHeight: 14 }}>
                 <Drift from={pick.capture_odds} to={pick.latest_odds} />

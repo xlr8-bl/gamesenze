@@ -162,7 +162,7 @@ export default function RecordPage() {
                     </div>
                   </td>
                   <td>
-                    {selectionLabel(r.selection, r.home_team, r.away_team)}
+                    {selectionLabel(r.selection, r.home_team, r.away_team, r.market)}
                     <div style={{ color: "var(--ink-3)", fontSize: "var(--t-micro)" }}>
                       {marketLabel(r.market)}
                     </div>

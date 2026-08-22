@@ -40,7 +40,7 @@ export function addToCombo(pick: Pick): Leg[] {
     fixtureId: pick.fixture_id,
     label: `${pick.home_team} v ${pick.away_team}`,
     market: marketLabel(pick.market),
-    selection: selectionLabel(pick.selection, pick.home_team, pick.away_team),
+    selection: selectionLabel(pick.selection, pick.home_team, pick.away_team, pick.market),
     odds: Number(pick.latest_odds ?? pick.capture_odds ?? 0),
     bookmaker: pick.latest_bookmaker ?? pick.capture_bookmaker ?? "unknown",
     oddsAsOf: pick.latest_odds_at ?? pick.published_at ?? new Date().toISOString(),

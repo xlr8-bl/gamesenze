@@ -108,8 +108,13 @@ export function selectionLabel(
   selection: string | null,
   home: string | null | undefined,
   away: string | null | undefined,
+  market?: string | null,
 ): string {
   if (!selection) return "";
+  // The goal line lives in the market key (e.g. "ou_3.5"); default to 2.5.
+  const line = market && market.toLowerCase().startsWith("ou_")
+    ? market.slice(3)
+    : "2.5";
   switch (selection.trim().toLowerCase()) {
     case "home":
       return home || "Home";
@@ -118,13 +123,19 @@ export function selectionLabel(
     case "draw":
       return "Draw";
     case "over":
-      return "Over 2.5 goals";
+      return `Over ${line} goals`;
     case "under":
-      return "Under 2.5 goals";
+      return `Under ${line} goals`;
     case "yes":
       return "Both teams to score";
     case "no":
       return "Not both teams to score";
+    case "1x":
+      return `${home || "Home"} or draw`;
+    case "12":
+      return `${home || "Home"} or ${away || "Away"}`;
+    case "x2":
+      return `Draw or ${away || "Away"}`;
     default:
       return selection;
   }
@@ -139,6 +150,7 @@ export function marketLabel(market: string | null): string {
   const m = market.trim().toLowerCase();
   if (m === "1x2") return "Match result";
   if (m === "btts") return "Both teams to score";
+  if (m === "double_chance") return "Double chance";
   if (m.startsWith("ou_")) return "Total goals";
   return market;
 }
